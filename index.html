@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AV Control Rack</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="rack" aria-label="AV control rack">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">AV CONTROL RACK</p>
+            <h1>Visual Engine 01</h1>
+          </div>
+          <div class="status-stack">
+            <span id="audioStatus" class="status">AUDIO OFF</span>
+            <span id="midiStatus" class="status">MIDI IDLE</span>
+            <span id="oscStatus" class="status">OSC READY</span>
+          </div>
+        </header>
+
+        <div class="section scene-bank" aria-label="Scene bank">
+          <button class="scene active" data-scene="0">A</button>
+          <button class="scene" data-scene="1">B</button>
+          <button class="scene" data-scene="2">C</button>
+          <button class="scene" data-scene="3">D</button>
+          <button class="scene" data-scene="4">E</button>
+          <button class="scene" data-scene="5">F</button>
+          <button class="scene" data-scene="6">G</button>
+          <button class="scene" data-scene="7">H</button>
+        </div>
+
+        <div class="section transport">
+          <button id="audioToggle" class="command">MIC</button>
+          <button id="blackoutToggle" class="command">BLACK</button>
+          <button id="freezeToggle" class="command">FREEZE</button>
+          <button id="randomize" class="command">RND</button>
+        </div>
+
+        <div class="section sliders">
+          <label>
+            <span>Speed</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.38" data-param="speed" />
+          </label>
+          <label>
+            <span>Density</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.62" data-param="density" />
+          </label>
+          <label>
+            <span>Feedback</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.44" data-param="feedback" />
+          </label>
+          <label>
+            <span>Warp</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.52" data-param="warp" />
+          </label>
+          <label>
+            <span>Size</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.46" data-param="size" />
+          </label>
+          <label>
+            <span>Audio Gain</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.7" data-param="audioGain" />
+          </label>
+          <label>
+            <span>Hue</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.58" data-param="hue" />
+          </label>
+          <label>
+            <span>Intensity</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.76" data-param="intensity" />
+          </label>
+        </div>
+
+        <div class="section readout">
+          <div><span>Scene</span><strong id="sceneReadout">A</strong></div>
+          <div><span>Bass</span><strong id="bassReadout">0.00</strong></div>
+          <div><span>Mid</span><strong id="midReadout">0.00</strong></div>
+          <div><span>High</span><strong id="highReadout">0.00</strong></div>
+        </div>
+      </section>
+
+      <section class="stage" aria-label="Visual output">
+        <canvas id="visualizer"></canvas>
+        <div class="output-overlay">
+          <span id="modeLabel">SCENE A</span>
+          <span>OSC / MIDI / AUDIO REACTIVE</span>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
