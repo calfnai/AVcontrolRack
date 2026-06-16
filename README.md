@@ -2,6 +2,14 @@
 
 一个用于 TouchDesigner / 现场视觉的本地控制台原型。
 
+## 在线版本
+
+```text
+https://calfnai.github.io/AVcontrolRack/
+```
+
+在线版本可用于视觉、麦克风和 MIDI 测试。浏览器网页不能直接发送 UDP OSC 到本地 TouchDesigner；需要 OSC 时请使用下面的本地启动方式。
+
 ## 启动
 
 ```bash
