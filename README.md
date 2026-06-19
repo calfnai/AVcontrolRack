@@ -23,6 +23,25 @@ http://localhost:4173
 
 项目当前没有第三方 npm 依赖，因此克隆后不需要先运行 `npm install`。
 
+## 在另一台电脑用 Codex 共同开发
+
+先在另一台电脑安装并登录 GitHub、Codex，然后让 Codex 打开克隆后的 `AVcontrolRack` 文件夹。仓库根目录的 `AGENTS.md` 会向 Codex 提供项目结构、开发约束和验证要求。
+
+首次使用：
+
+```bash
+git clone https://github.com/calfnai/AVcontrolRack.git
+cd AVcontrolRack
+```
+
+以后每次换电脑继续开发前：
+
+```bash
+git pull --rebase
+```
+
+开发完成后，让 Codex 提交并推送到 GitHub；另一台电脑再次执行 `git pull --rebase` 就能接着开发。GitHub 同步代码和 `AGENTS.md`，但不会同步两个 Codex 对话的聊天记录，因此重要决定应写进仓库文档。
+
 ## 在线版本
 
 ```text
