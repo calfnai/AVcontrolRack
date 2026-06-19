@@ -2,6 +2,27 @@
 
 一个用于 TouchDesigner / 现场视觉的本地控制台原型。
 
+## 在另一台电脑运行
+
+准备：
+
+- Git
+- Node.js 18 或更高版本
+
+```bash
+git clone https://github.com/calfnai/AVcontrolRack.git
+cd AVcontrolRack
+npm start
+```
+
+然后打开：
+
+```text
+http://localhost:4173
+```
+
+项目当前没有第三方 npm 依赖，因此克隆后不需要先运行 `npm install`。
+
 ## 在线版本
 
 ```text
