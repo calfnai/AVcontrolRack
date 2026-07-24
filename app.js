@@ -1,6 +1,9 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js";
-
 const canvas = document.querySelector("#visualizer");
+const THREE = window.THREE;
+
+if (!THREE) {
+  throw new Error("Three.js failed to load. Check vendor/three.min.js.");
+}
 
 const state = {
   scene: 0,

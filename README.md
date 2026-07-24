@@ -23,7 +23,7 @@ npm start
 http://localhost:4173
 ```
 
-项目当前没有本地 npm 依赖，因此克隆后不需要先运行 `npm install`。浏览器会从 CDN 加载 Three.js。
+项目当前没有本地 npm 依赖，因此克隆后不需要先运行 `npm install`。Three.js 已放在 `vendor/three.min.js`，直接打开 `index.html` 或使用 GitHub Pages 都可以加载 3D 舞台。
 
 ## 在另一台电脑用 Codex 共同开发
 
