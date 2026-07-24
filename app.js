@@ -1,5 +1,6 @@
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js";
+
 const canvas = document.querySelector("#visualizer");
-const ctx = canvas.getContext("2d", { alpha: false });
 
 const state = {
   scene: 0,
@@ -13,6 +14,7 @@ const state = {
   intensity: 0.76,
   blackout: false,
   freeze: false,
+  echo: true,
   bass: 0,
   mid: 0,
   high: 0,
@@ -30,12 +32,106 @@ const midReadout = document.querySelector("#midReadout");
 const highReadout = document.querySelector("#highReadout");
 const modeLabel = document.querySelector("#modeLabel");
 const audioToggle = document.querySelector("#audioToggle");
+const echoToggle = document.querySelector("#echoToggle");
 const blackoutToggle = document.querySelector("#blackoutToggle");
 const freezeToggle = document.querySelector("#freezeToggle");
 const randomize = document.querySelector("#randomize");
 
-let width = 0;
-let height = 0;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setClearColor(0x050607, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050607, 0.035);
+
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 120);
+camera.position.set(0, 17, 24);
+camera.lookAt(0, 0, 0);
+
+const gridSize = 88;
+const gridCount = gridSize * gridSize;
+const spacing = 0.28;
+const halfGrid = (gridSize - 1) * spacing * 0.5;
+const dummy = new THREE.Object3D();
+const color = new THREE.Color();
+const meterColor = new THREE.Color();
+const columnGeometry = new THREE.BoxGeometry(0.13, 1, 0.13);
+const columnMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  metalness: 0.12,
+  roughness: 0.34,
+  emissive: 0x111111,
+  emissiveIntensity: 0.45,
+});
+const columns = new THREE.InstancedMesh(columnGeometry, columnMaterial, gridCount);
+columns.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+columns.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(gridCount * 3), 3);
+scene.add(columns);
+
+const floorGeometry = new THREE.PlaneGeometry(34, 34, 64, 64);
+const floorMaterial = new THREE.MeshStandardMaterial({
+  color: 0x080a0d,
+  metalness: 0.05,
+  roughness: 0.74,
+  transparent: true,
+  opacity: 0.84,
+});
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.05;
+scene.add(floor);
+
+const ringMaterial = new THREE.MeshBasicMaterial({
+  color: 0x7cf7ff,
+  transparent: true,
+  opacity: 0,
+  side: THREE.DoubleSide,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const rings = Array.from({ length: 7 }, (_, index) => {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.95 + index * 1.2, 1.02 + index * 1.2, 128), ringMaterial.clone());
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.025 + index * 0.01;
+  scene.add(ring);
+  return ring;
+});
+
+const particleCount = 420;
+const particlePositions = new Float32Array(particleCount * 3);
+const particleVelocities = [];
+for (let i = 0; i < particleCount; i += 1) {
+  particlePositions[i * 3] = (Math.random() - 0.5) * 22;
+  particlePositions[i * 3 + 1] = Math.random() * 7 + 2;
+  particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 22;
+  particleVelocities.push({
+    x: (Math.random() - 0.5) * 0.02,
+    y: -0.02 - Math.random() * 0.05,
+    z: 0.04 + Math.random() * 0.12,
+  });
+}
+const particleGeometry = new THREE.BufferGeometry();
+particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+const particleMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.055,
+  transparent: true,
+  opacity: 0.56,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const particles = new THREE.Points(particleGeometry, particleMaterial);
+scene.add(particles);
+
+const ambient = new THREE.AmbientLight(0x718090, 0.8);
+scene.add(ambient);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+keyLight.position.set(-8, 18, 12);
+scene.add(keyLight);
+const accentLight = new THREE.PointLight(0x56f0ff, 22, 34);
+accentLight.position.set(0, 8, 0);
+scene.add(accentLight);
+
 let audioContext;
 let analyser;
 let frequencyData;
@@ -43,14 +139,6 @@ let time = 0;
 let last = performance.now();
 let pointerX = 0.5;
 let pointerY = 0.5;
-
-function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  width = Math.floor(canvas.clientWidth * dpr);
-  height = Math.floor(canvas.clientHeight * dpr);
-  canvas.width = width;
-  canvas.height = height;
-}
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -75,7 +163,7 @@ function setScene(index, shouldSend = true) {
   );
   const label = sceneNames[state.scene];
   sceneReadout.textContent = label;
-  modeLabel.textContent = `SCENE ${label}`;
+  modeLabel.textContent = `RANGE ECHO ${label}`;
   if (shouldSend) sendParam("scene", state.scene);
 }
 
@@ -88,21 +176,34 @@ async function sendParam(name, value) {
     });
     setStatus(oscStatus, "OSC SENT", true);
   } catch {
-    setStatus(oscStatus, "OSC LOCAL", false);
+    setStatus(oscStatus, "WEB ONLY", false);
   }
 }
 
+function band(from, to) {
+  if (!frequencyData) return 0;
+  let sum = 0;
+  for (let i = from; i < to; i += 1) sum += frequencyData[i] || 0;
+  return clamp((sum / Math.max(1, to - from) / 255) * state.audioGain * 1.45);
+}
+
 function updateAudio() {
-  if (!analyser || !frequencyData) return;
-  analyser.getByteFrequencyData(frequencyData);
-  const band = (from, to) => {
-    let sum = 0;
-    for (let i = from; i < to; i += 1) sum += frequencyData[i] || 0;
-    return clamp((sum / Math.max(1, to - from) / 255) * state.audioGain * 1.35);
-  };
-  state.bass = state.bass * 0.78 + band(2, 12) * 0.22;
-  state.mid = state.mid * 0.82 + band(12, 44) * 0.18;
-  state.high = state.high * 0.86 + band(44, 116) * 0.14;
+  let bass = 0;
+  let mid = 0;
+  let high = 0;
+  if (analyser && frequencyData) {
+    analyser.getByteFrequencyData(frequencyData);
+    bass = band(2, 12);
+    mid = band(12, 54);
+    high = band(54, 150);
+  } else {
+    bass = 0.24 + Math.sin(time * 1.35) * 0.08;
+    mid = 0.2 + Math.sin(time * 0.93 + 2) * 0.07;
+    high = 0.12 + Math.sin(time * 1.9 + 4) * 0.04;
+  }
+  state.bass = state.bass * 0.82 + bass * 0.18;
+  state.mid = state.mid * 0.85 + mid * 0.15;
+  state.high = state.high * 0.88 + high * 0.12;
   bassReadout.textContent = state.bass.toFixed(2);
   midReadout.textContent = state.mid.toFixed(2);
   highReadout.textContent = state.high.toFixed(2);
@@ -113,119 +214,163 @@ async function startAudio() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   audioContext = new AudioContext();
   analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512;
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.72;
   frequencyData = new Uint8Array(analyser.frequencyBinCount);
   audioContext.createMediaStreamSource(stream).connect(analyser);
   setStatus(audioStatus, "AUDIO ON", true);
   audioToggle.classList.add("active");
 }
 
-function color(offset, alpha = 1) {
-  const hue = Math.round((state.hue * 360 + offset + state.scene * 28) % 360);
-  return `hsla(${hue}, ${62 + state.high * 30}%, ${38 + state.intensity * 42}%, ${alpha})`;
+function frequencyAt(column, distance) {
+  if (!frequencyData) return 0.2 + Math.sin(distance * 0.42 - time * 1.4) * 0.14;
+  const normalized = column / (gridSize - 1);
+  const curve = Math.pow(normalized, 1.7);
+  const index = Math.min(frequencyData.length - 1, Math.floor(curve * frequencyData.length * 0.82) + 2);
+  return frequencyData[index] / 255;
 }
 
-function drawGrid(cx, cy, radius, count) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(time * 0.13 + state.scene * 0.26);
-  ctx.globalCompositeOperation = "lighter";
-  for (let i = 0; i < count; i += 1) {
-    const angle = (i / count) * Math.PI * 2;
-    const wobble = Math.sin(time * (0.7 + state.speed) + i * 0.29) * state.warp;
-    const r = radius * (0.28 + ((i % 9) / 9) * 0.72 + state.bass * 0.18);
-    const x = Math.cos(angle + wobble) * r;
-    const y = Math.sin(angle * (1 + state.mid * 0.5) - wobble) * r;
-    ctx.beginPath();
-    ctx.arc(x, y, 1.5 + state.size * 7 + state.bass * 18, 0, Math.PI * 2);
-    ctx.fillStyle = color(i * 5, 0.18 + state.intensity * 0.32);
-    ctx.fill();
-  }
-  ctx.restore();
-}
+function updateColumns() {
+  const activeSize = Math.floor(44 + state.density * 44);
+  const start = Math.floor((gridSize - activeSize) / 2);
+  const end = start + activeSize;
+  const baseHue = (state.hue + state.scene * 0.065) % 1;
+  const echo = state.echo ? 1 : 0;
+  let visible = 0;
 
-function drawRays(cx, cy, radius, count) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalCompositeOperation = "screen";
-  ctx.lineWidth = 1 + state.size * 4 + state.high * 12;
-  for (let i = 0; i < count; i += 1) {
-    const p = i / count;
-    const angle = p * Math.PI * 2 + time * (0.1 + state.speed * 0.5);
-    const wave = Math.sin(time * 2 + i * 0.4) * radius * state.warp * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(angle) * radius * 0.1, Math.sin(angle) * radius * 0.1);
-    ctx.lineTo(Math.cos(angle) * (radius + wave), Math.sin(angle) * (radius + wave));
-    ctx.strokeStyle = color(i * 12, 0.06 + state.intensity * 0.22);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
+  for (let z = 0; z < gridSize; z += 1) {
+    for (let x = 0; x < gridSize; x += 1) {
+      const index = z * gridSize + x;
+      if (x < start || x >= end || z < start || z >= end) {
+        dummy.scale.setScalar(0);
+        dummy.updateMatrix();
+        columns.setMatrixAt(index, dummy.matrix);
+        continue;
+      }
 
-function drawWave(cx, cy, radius) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.lineWidth = 2 + state.size * 8;
-  for (let ring = 0; ring < 5; ring += 1) {
-    ctx.beginPath();
-    const points = 220;
-    for (let i = 0; i <= points; i += 1) {
-      const p = i / points;
-      const angle = p * Math.PI * 2;
-      const amp = Math.sin(angle * (3 + state.scene) + time * (1 + state.speed * 3));
-      const amp2 = Math.cos(angle * 7 - time * 0.7 + ring);
-      const r =
-        radius *
-        (0.24 + ring * 0.11 + amp * state.warp * 0.07 + amp2 * state.mid * 0.1);
-      const x = Math.cos(angle) * r;
-      const y = Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      const gx = x * spacing - halfGrid;
+      const gz = z * spacing - halfGrid;
+      const dx = x - gridSize * 0.5;
+      const dz = z - gridSize * 0.5;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      const angle = Math.atan2(dz, dx);
+      const freq = frequencyAt(x, distance);
+      const ripple = Math.sin(distance * (0.38 + state.warp * 0.5) - time * (2.5 + state.speed * 4) + state.scene);
+      const cross = Math.sin((gx * Math.cos(time * 0.12) + gz * Math.sin(time * 0.12)) * 1.1 + time);
+      const energy = clamp(
+        freq * 0.9 +
+          state.bass * (0.55 + ripple * 0.35) * echo +
+          state.mid * Math.abs(cross) * 0.5 +
+          state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.35,
+      );
+      const height = 0.08 + Math.pow(energy, 1.35) * (0.85 + state.size * 6.4);
+      const y = height * 0.5;
+      const lean = state.warp * state.mid * 0.12;
+
+      dummy.position.set(gx, y, gz);
+      dummy.rotation.set(lean * Math.sin(angle + time), 0, lean * Math.cos(angle - time));
+      dummy.scale.set(1, height, 1);
+      dummy.updateMatrix();
+      columns.setMatrixAt(index, dummy.matrix);
+
+      color.setHSL(
+        (baseHue + energy * 0.18 + distance * 0.004 + angle / (Math.PI * 8) + z * 0.0018) % 1,
+        0.7 + state.high * 0.22,
+        0.27 + state.intensity * 0.34 + energy * 0.3,
+      );
+      columns.setColorAt(index, color);
+      visible += 1;
     }
-    ctx.closePath();
-    ctx.strokeStyle = color(ring * 45, 0.13 + state.intensity * 0.2);
-    ctx.stroke();
   }
-  ctx.restore();
+
+  columns.count = gridCount;
+  columns.instanceMatrix.needsUpdate = true;
+  columns.instanceColor.needsUpdate = true;
+  columnMaterial.emissiveIntensity = 0.12 + state.intensity * 0.62 + state.high * 0.7;
+  accentLight.intensity = state.blackout ? 0 : 16 + state.bass * 46 + state.high * 28;
+  meterColor.setHSL(baseHue, 0.9, 0.55);
+  accentLight.color.copy(meterColor);
+  return visible;
+}
+
+function updateRings() {
+  rings.forEach((ring, index) => {
+    const phase = (time * (0.22 + state.speed * 0.52) + index / rings.length) % 1;
+    const scale = 0.8 + phase * (6.8 + state.bass * 4.8);
+    ring.scale.setScalar(scale);
+    ring.material.opacity = state.echo && !state.blackout ? Math.max(0, (1 - phase) * state.bass * (0.18 + state.feedback * 0.42)) : 0;
+    ring.material.color.setHSL((state.hue + 0.48 + index * 0.02) % 1, 0.88, 0.58);
+  });
+}
+
+function updateParticles(delta) {
+  const positions = particleGeometry.attributes.position.array;
+  const boost = state.echo ? state.high * 0.26 : 0;
+  for (let i = 0; i < particleCount; i += 1) {
+    const offset = i * 3;
+    const velocity = particleVelocities[i];
+    positions[offset] += velocity.x * (1 + boost * 18);
+    positions[offset + 1] += velocity.y * (1 + state.speed * 4) - boost * delta * 14;
+    positions[offset + 2] += velocity.z * (1 + boost * 22);
+
+    if (
+      positions[offset + 1] < 0.4 ||
+      positions[offset] < -15 ||
+      positions[offset] > 15 ||
+      positions[offset + 2] > 15
+    ) {
+      positions[offset] = (Math.random() - 0.5) * 23;
+      positions[offset + 1] = 5 + Math.random() * 8 + state.high * 6;
+      positions[offset + 2] = -13 - Math.random() * 5;
+    }
+  }
+  particleGeometry.attributes.position.needsUpdate = true;
+  particleMaterial.opacity = state.blackout ? 0 : 0.22 + state.high * 0.72;
+  particleMaterial.size = 0.035 + state.size * 0.035 + state.high * 0.09;
+  particleMaterial.color.setHSL((state.hue + 0.18 + state.scene * 0.04) % 1, 0.8, 0.72);
+}
+
+function resize() {
+  const { clientWidth, clientHeight } = canvas;
+  renderer.setSize(clientWidth, clientHeight, false);
+  camera.aspect = clientWidth / Math.max(1, clientHeight);
+  camera.updateProjectionMatrix();
 }
 
 function draw(now) {
   const delta = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (!state.freeze) time += delta * (0.25 + state.speed * 2.8);
+  if (!state.freeze) time += delta * (0.2 + state.speed * 2.2);
   updateAudio();
 
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = state.blackout
-    ? "rgba(0,0,0,0.92)"
-    : `rgba(5, 6, 7, ${0.08 + (1 - state.feedback) * 0.48})`;
-  ctx.fillRect(0, 0, width, height);
+  renderer.setClearColor(state.blackout ? 0x000000 : 0x050607, 1);
+  columns.visible = !state.blackout;
+  floor.visible = !state.blackout;
+  particles.visible = !state.blackout;
 
   if (!state.blackout) {
-    const cx = width * (0.42 + (pointerX - 0.5) * 0.16);
-    const cy = height * (0.5 + (pointerY - 0.5) * 0.2);
-    const radius = Math.min(width, height) * (0.38 + state.size * 0.18 + state.bass * 0.1);
-    const density = Math.floor(90 + state.density * 330);
-
-    if (state.scene % 3 === 0) {
-      drawRays(cx, cy, radius * 1.4, Math.floor(density * 0.36));
-      drawGrid(cx, cy, radius, density);
-    } else if (state.scene % 3 === 1) {
-      drawWave(cx, cy, radius * 1.25);
-      drawGrid(cx, cy, radius * 0.84, Math.floor(density * 0.72));
-    } else {
-      drawGrid(cx, cy, radius * 1.1, density);
-      drawRays(cx, cy, radius * 0.9, Math.floor(density * 0.22));
-    }
+    updateColumns();
+    updateRings();
+    updateParticles(delta);
+    const orbit = (pointerX - 0.5) * 0.34;
+    camera.position.x = Math.sin(orbit) * 16;
+    camera.position.y = 15 + (pointerY - 0.5) * 4 + state.bass * 1.5;
+    camera.position.z = 22 + Math.cos(orbit) * 2;
+    camera.lookAt(0, 1.1 + state.mid * 1.8, 0);
+    floorMaterial.opacity = 0.62 + state.feedback * 0.26;
+  } else {
+    rings.forEach((ring) => {
+      ring.material.opacity = 0;
+    });
   }
 
+  renderer.render(scene, camera);
   requestAnimationFrame(draw);
 }
 
 function randomizeParams() {
-  ["speed", "density", "feedback", "warp", "size", "audioGain", "hue", "intensity"].forEach(
-    (name) => setParam(name, Math.random()),
+  ["speed", "density", "feedback", "warp", "size", "audioGain", "hue", "intensity"].forEach((name) =>
+    setParam(name, Math.random()),
   );
 }
 
@@ -285,6 +430,12 @@ sceneButtons.forEach((button) => {
 
 audioToggle.addEventListener("click", () => {
   startAudio().catch(() => setStatus(audioStatus, "AUDIO BLOCK", false));
+});
+
+echoToggle.addEventListener("click", () => {
+  state.echo = !state.echo;
+  echoToggle.classList.toggle("active", state.echo);
+  sendParam("echo", state.echo ? 1 : 0);
 });
 
 blackoutToggle.addEventListener("click", () => {

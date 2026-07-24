@@ -1,6 +1,8 @@
 # AV Control Rack
 
-一个用于 TouchDesigner / 现场视觉的本地控制台原型。
+一个纯网页 3D 音频响应视觉原型，也保留本地 OSC 控制台能力。
+
+当前视觉方向是低成本的 `Range Echo 3D`：Three.js 实例化柱阵、Web Audio FFT、低频扩散波、高频粒子/流星感。线上版本可以直接打开试玩；本地版本额外可以把控制参数通过 OSC 发给 TouchDesigner。
 
 ## 在另一台电脑运行
 
@@ -21,7 +23,7 @@ npm start
 http://localhost:4173
 ```
 
-项目当前没有第三方 npm 依赖，因此克隆后不需要先运行 `npm install`。
+项目当前没有本地 npm 依赖，因此克隆后不需要先运行 `npm install`。浏览器会从 CDN 加载 Three.js。
 
 ## 在另一台电脑用 Codex 共同开发
 
@@ -48,7 +50,7 @@ git pull --rebase
 https://calfnai.github.io/AVcontrolRack/
 ```
 
-在线版本可用于视觉、麦克风和 MIDI 测试。浏览器网页不能直接发送 UDP OSC 到本地 TouchDesigner；需要 OSC 时请使用下面的本地启动方式。
+在线版本可用于 3D 视觉、麦克风和 MIDI 测试。浏览器网页不能直接发送 UDP OSC 到本地 TouchDesigner；需要 OSC 时请使用下面的本地启动方式。
 
 ## 启动
 
@@ -111,3 +113,13 @@ Note 36-43 -> scene A-H
 ## 音频
 
 点击 `MIC` 后，浏览器会请求麦克风权限。音频分析会驱动画面里的 bass / mid / high，并显示在左下角读数里。
+
+当前 3D 映射：
+
+```text
+bass -> 地面扩散波、柱阵整体冲击
+mid  -> 柱阵波形和扭曲
+high -> 高频粒子、亮边和闪烁
+```
+
+不打开麦克风时，页面会用一组轻微的 idle 信号保持动画可看。
