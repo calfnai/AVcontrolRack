@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Range Echo 界面与视觉设计说明：一件作品与一台现场工具如何共存。"
+    />
+    <meta property="og:title" content="Range Echo — Design Note" />
+    <meta
+      property="og:description"
+      content="先是一件作品，然后才是一台工具。"
+    />
+    <title>Range Echo — Design Note</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="design.css" />
+  </head>
+  <body>
+    <header class="site-head">
+      <a class="brand" href="index.html">
+        <span class="brand-dot"></span>
+        AV CONTROL RACK
+      </a>
+      <a class="live-link" href="index.html">ENTER LIVE FIELD ↗</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="kicker">GPU STUDY 01 / INTERFACE &amp; VISUAL DESIGN</p>
+          <h1>RANGE<br />ECHO</h1>
+          <p class="hero-statement">
+            先是一件作品，<br />
+            然后才是一台工具。
+          </p>
+        </div>
+        <div class="field-art" aria-hidden="true">
+          <span class="orbit orbit-a"></span>
+          <span class="orbit orbit-b"></span>
+          <span class="impact"></span>
+        </div>
+        <dl class="spec-strip">
+          <div><dt>FORM</dt><dd>Browser artwork</dd></div>
+          <div><dt>INPUT</dt><dd>Audio / MIDI / OSC</dd></div>
+          <div><dt>RENDER</dt><dd>Three.js / GLSL</dd></div>
+          <div><dt>BUDGET</dt><dd>Apple M1 / 33.6k pts</dd></div>
+        </dl>
+      </section>
+
+      <article class="essay">
+        <header class="essay-intro">
+          <p class="section-number">00 / DESIGN POSITION</p>
+          <h2>当工具本身也要被观看，它如何在作品与设备之间保持张力？</h2>
+          <p class="lede">
+            Range Echo 是一件由实时声音驱动的浏览器视觉作品，也是一套可以接入麦克风、音频文件、MIDI
+            与 OSC 的现场控制工具。它的设计命题不是怎样把更多参数放进屏幕，而是怎样建立正确的观看顺序。
+          </p>
+        </header>
+
+        <blockquote>
+          <span>ARTWORK FIRST.</span>
+          <span>CONTROL ON DEMAND.</span>
+        </blockquote>
+
+        <section class="chapter chapter-wide">
+          <div class="chapter-label">
+            <span>01</span>
+            <p>INTERFACE AS STAGE</p>
+          </div>
+          <div class="chapter-body">
+            <h3>界面不是画框，而是舞台</h3>
+            <p>
+              传统控制台习惯把控件放在第一层，把视觉结果留在一个被切割的小窗口里。Range Echo
+              反转了这个关系：全屏粒子场是舞台，控制系统退到右侧抽屉中。第一次打开页面，观众先感受到尺度、黑场与运动；需要操作时，界面才显露出设备属性。
+            </p>
+            <p>
+              画面中心被完整留给声音事件。标题位于左上，控制入口位于右上，模式选择贴近左侧，实时读数沉到底部。所有固定信息都绕开中心，因为中间必须容纳最强的中低频力量、白热冲击以及向外扩张的波纹。
+            </p>
+            <p>
+              巨大的 <strong>RANGE ECHO</strong>
+              不是品牌装饰，而是稳定的视觉锚点。粒子不断流动、扩散、旋转，粗重而静止的字体为画面提供重量，让页面更像一张持续变化的音乐海报，而不是普通的 WebGL Demo。
+            </p>
+          </div>
+        </section>
+
+        <section class="grammar">
+          <div class="chapter-label">
+            <span>02</span>
+            <p>THREE VISUAL LANGUAGES</p>
+          </div>
+          <div class="grammar-grid">
+            <div>
+              <p class="mini-label">A / EDITORIAL BRUTALISM</p>
+              <h3>坚硬的排版</h3>
+              <p>
+                大字号、硬边框、高对比和编号负责建立结构。界面刻意避开圆润卡片与“未来玻璃”，因为粒子画面已经足够柔软。坚硬的排版让它不至于滑向模板化的 Web3 审美。
+              </p>
+            </div>
+            <div>
+              <p class="mini-label">B / AUDIO SPATIAL NARRATIVE</p>
+              <h3>声音制造事件</h3>
+              <p>
+                中低频从中央扩散，重低音留下不可见落点的冲击反馈，高频以流星快速穿过空间。差异不靠彩虹分色，而由运动、尺度、方向和寿命表达。
+              </p>
+            </div>
+            <div>
+              <p class="mini-label">C / LIVE AV LOGIC</p>
+              <h3>可信的设备感</h3>
+              <p>
+                等宽字体、状态灯、参数分区与 A–H 场景记忆构成专业 rack 的语法。关闭抽屉，它是一件作品；打开抽屉，它是一台可以工作的设备。
+              </p>
+            </div>
+          </div>
+        </section>
+      </article>
+
+      <section class="interlude" aria-label="Sound becomes space">
+        <p>SOUND</p>
+        <p>BECOMES</p>
+        <p>SPACE</p>
+        <div class="wave-line"></div>
+      </section>
+
+      <article class="essay second">
+        <section class="chapter sound-map">
+          <div class="chapter-label">
+            <span>03</span>
+            <p>FROM FFT TO EVENT</p>
+          </div>
+          <div class="chapter-body">
+            <h3>频率不是数据列，而是空间角色</h3>
+            <ul class="mapping-list">
+              <li><b>LOW–MID</b><span>中央聚集力量，产生向外移动并衰减的波前。</span></li>
+              <li><b>SUB–BASS</b><span>触发源保持不可见，只呈现落点、凹陷与反向冲击。</span></li>
+              <li><b>HIGH</b><span>成为短促的流星与碎光，不持续占据画面。</span></li>
+              <li><b>BPM</b><span>提供旋转与呼吸基准，但不让所有动画机械卡拍。</span></li>
+              <li><b>IDLE</b><span>没有输入时仍保持轻微呼吸，避免退化成待机页。</span></li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="split-chapters">
+          <div class="chapter compact">
+            <div class="chapter-label">
+              <span>04</span>
+              <p>COLOR &amp; MATERIAL</p>
+            </div>
+            <div class="chapter-body">
+              <h3>黑、洋红与白热</h3>
+              <p>
+                黑色不是空白背景，而是距离。紫色和洋红承担持续能量：比纯蓝更有体温，又比红色更适合长时间观看。白色只出现在最强的波前和冲击边缘，成为短暂的“过曝”。
+              </p>
+              <p>
+                颜色维持统一情绪；声音差异交给运动表达。白色因此代表真正的峰值，而不是普通照明。
+              </p>
+            </div>
+          </div>
+
+          <div class="chapter compact">
+            <div class="chapter-label">
+              <span>05</span>
+              <p>PERFORMANCE AS AESTHETIC</p>
+            </div>
+            <div class="chapter-body">
+              <h3>限制形成纪律</h3>
+              <p>
+                项目把 Apple M1、16GB 内存作为明确上限。默认由 25,600 个核心点与 8,000 个氛围粒子组成，高画质也不超过 49,600 点。
+              </p>
+              <p>
+                单一 GPU Shader、点精灵光核、有限后期和共享粒子池，共同构成一种轻量但不轻薄的网页视觉。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="reference-note">
+          <div class="chapter-label">
+            <span>06</span>
+            <p>REFERENCE, NOT REPLICA</p>
+          </div>
+          <div>
+            <h3>参考，而不是复刻</h3>
+            <p>
+              项目从 Particleify 的全屏粒子构图中学习尺度、景深与“设置服从画面”的关系；从《音域回响》式音乐壁纸中学习低频的中心性、波纹扩散和突发事件；再把这些经验放入现场 AV rack 的交互框架中。
+            </p>
+            <p>
+              它们被重新组织为一个属于浏览器的命题：如何让一个可以独立打开的网页，同时具有音乐壁纸的沉浸感、生成艺术的可塑性，以及现场工具的可信度。
+            </p>
+          </div>
+        </section>
+
+        <footer class="closing">
+          <p class="section-number">DESIGN CONCLUSION</p>
+          <h2>远看，是一张持续变化的音乐海报。<br />近看，是一套可以真正接入声音的视觉系统。</h2>
+          <p>
+            这套 UI 的价值不在于装饰了多少功能，而在于建立了清楚的观看顺序：
+            <strong>先进入声音的空间，再决定是否触碰控制。</strong>
+          </p>
+          <a class="return-link" href="index.html">RETURN TO LIVE FIELD ↗</a>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>
