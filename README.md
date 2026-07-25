@@ -54,6 +54,22 @@ https://calfnai.github.io/AVcontrolRack/
 
 ## 启动
 
+macOS 本机试玩可以直接双击：
+
+```text
+Open AV Control Rack.command
+```
+
+它会启动本地服务并打开：
+
+```text
+http://127.0.0.1:4173
+```
+
+只要这个 Terminal 窗口还开着，本地预览就不会出现 `127.0.0.1 refused to connect`。要停止本地预览，在那个 Terminal 窗口按 `Control-C`。
+
+命令行启动：
+
 ```bash
 npm start
 ```
