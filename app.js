@@ -57,20 +57,21 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setClearColor(0x050607, 1);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x050607, 0.035);
+scene.fog = new THREE.FogExp2(0x050607, 0.024);
 
-const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 120);
-camera.position.set(0, 17, 24);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 150);
+camera.position.set(0, 27, 40);
 camera.lookAt(0, 0, 0);
 
-const gridSize = 112;
+const gridSize = 128;
 const gridCount = gridSize * gridSize;
-const spacing = 0.22;
+const spacing = 0.28;
 const halfGrid = (gridSize - 1) * spacing * 0.5;
+const gridReach = Math.sqrt(2) * halfGrid;
 const dummy = new THREE.Object3D();
 const color = new THREE.Color();
 const meterColor = new THREE.Color();
-const columnGeometry = new THREE.BoxGeometry(0.105, 1, 0.105);
+const columnGeometry = new THREE.BoxGeometry(0.18, 1, 0.18);
 const columnMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   metalness: 0.12,
@@ -83,7 +84,7 @@ columns.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 columns.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(gridCount * 3), 3);
 scene.add(columns);
 
-const floorGeometry = new THREE.PlaneGeometry(34, 34, 64, 64);
+const floorGeometry = new THREE.PlaneGeometry(46, 46, 64, 64);
 const floorMaterial = new THREE.MeshStandardMaterial({
   color: 0x080a0d,
   metalness: 0.05,
@@ -104,28 +105,18 @@ const ringMaterial = new THREE.MeshBasicMaterial({
   blending: THREE.AdditiveBlending,
   depthWrite: false,
 });
-const rings = Array.from({ length: 7 }, (_, index) => {
-  const baseRadius = 0.95 + index * 1.2;
+const centerRingSlots = 9;
+const impactRingSlots = 7;
+const ringGroup = new THREE.Group();
+scene.add(ringGroup);
+const rings = Array.from({ length: centerRingSlots + impactRingSlots }, (_, index) => {
+  const baseRadius = 0.9 + (index % centerRingSlots) * 0.08;
   const ring = new THREE.Mesh(new THREE.RingGeometry(baseRadius, baseRadius + 0.07, 128), ringMaterial.clone());
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.025 + index * 0.01;
   ring.userData.baseRadius = baseRadius;
-  scene.add(ring);
+  ringGroup.add(ring);
   return ring;
-});
-
-const bombMaterial = new THREE.MeshBasicMaterial({
-  color: 0xffffff,
-  transparent: true,
-  opacity: 0,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-});
-const bombs = Array.from({ length: 10 }, () => {
-  const bomb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 12), bombMaterial.clone());
-  bomb.visible = false;
-  scene.add(bomb);
-  return bomb;
 });
 
 const particleCount = 420;
@@ -154,6 +145,30 @@ const particleMaterial = new THREE.PointsMaterial({
 const particles = new THREE.Points(particleGeometry, particleMaterial);
 scene.add(particles);
 
+const burstParticleCount = 280;
+const burstPositions = new Float32Array(burstParticleCount * 3);
+const burstState = Array.from({ length: burstParticleCount }, () => ({
+  active: false,
+  age: 0,
+  life: 1,
+  vx: 0,
+  vy: 0,
+  vz: 0,
+}));
+burstPositions.fill(999);
+const burstGeometry = new THREE.BufferGeometry();
+burstGeometry.setAttribute("position", new THREE.BufferAttribute(burstPositions, 3));
+const burstMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.13,
+  transparent: true,
+  opacity: 0.9,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const impactBursts = new THREE.Points(burstGeometry, burstMaterial);
+scene.add(impactBursts);
+
 const ambient = new THREE.AmbientLight(0x718090, 0.8);
 scene.add(ambient);
 const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
@@ -176,10 +191,15 @@ let pointerY = 0.5;
 let rotationPhase = 0;
 let beatHold = 0;
 let lastBeatAt = 0;
-let lastBombAt = 0;
+let lastImpactAt = 0;
+let lastCenterPulseAt = 0;
 let previousBeatEnergy = 0;
+let previousLowMidEnergy = 0;
+let previousSubBassEnergy = 0;
 const beatIntervals = [];
+const centerPulses = [];
 const impacts = [];
+let burstCursor = 0;
 const particleCanvas = document.createElement("canvas");
 const particleCtx = particleCanvas.getContext("2d", { willReadFrequently: true });
 const particleSize = 128;
@@ -302,9 +322,13 @@ function updateAudio() {
   state.mid = state.mid * 0.86 + mid * 0.14;
   state.high = state.high * 0.88 + high * 0.12;
 
+  const hasLiveAudio = Boolean(analyser && frequencyData);
+  const lowMidEnergy = state.bass * 0.62 + state.lowMid * 0.9;
+  const lowMidJump = lowMidEnergy - previousLowMidEnergy;
   const beatEnergy = state.subBass * 0.35 + state.bass * 0.42 + state.lowMid * 0.23;
   const jump = beatEnergy - previousBeatEnergy;
   const beatThreshold = 0.09 + (1 - state.audioGain) * 0.08;
+  let detectedBeat = false;
   if (jump > beatThreshold && beatEnergy > 0.22 && nowSeconds - lastBeatAt > 0.24) {
     if (lastBeatAt) {
       const interval = nowSeconds - lastBeatAt;
@@ -317,17 +341,28 @@ function updateAudio() {
     }
     lastBeatAt = nowSeconds;
     beatHold = 1;
+    detectedBeat = true;
   }
   beatHold *= 0.9;
   state.beat = state.beat * 0.72 + beatHold * 0.28;
   previousBeatEnergy = previousBeatEnergy * 0.72 + beatEnergy * 0.28;
 
-  const bombEnergy = Math.max(state.subBass * 1.15, state.subBass < 0.08 ? beatEnergy * 0.72 : 0);
-  const bombThreshold = state.subBass > 0.08 ? 0.38 : 0.46;
-  if (bombEnergy > bombThreshold && nowSeconds - lastBombAt > 0.38) {
-    spawnImpact(bombEnergy, state.subBass > 0.08);
-    lastBombAt = nowSeconds;
+  const centerOnset = detectedBeat || (lowMidJump > 0.045 && lowMidEnergy > 0.18);
+  if (hasLiveAudio && centerOnset && nowSeconds - lastCenterPulseAt > 0.14) {
+    spawnCenterPulse(clamp(lowMidEnergy * 0.82 + state.beat * 0.42, 0.22, 1));
+    lastCenterPulseAt = nowSeconds;
   }
+  previousLowMidEnergy = previousLowMidEnergy * 0.74 + lowMidEnergy * 0.26;
+
+  const subBassJump = state.subBass - previousSubBassEnergy;
+  const hasTrueSubBass = state.subBass > 0.24 && subBassJump > 0.055;
+  const fallbackImpact = state.subBass < 0.1 && detectedBeat && beatEnergy > 0.34;
+  if (hasLiveAudio && (hasTrueSubBass || fallbackImpact) && nowSeconds - lastImpactAt > 0.48) {
+    const impactStrength = hasTrueSubBass ? state.subBass * 1.2 : beatEnergy * 0.82;
+    spawnImpact(impactStrength, hasTrueSubBass);
+    lastImpactAt = nowSeconds;
+  }
+  previousSubBassEnergy = previousSubBassEnergy * 0.72 + state.subBass * 0.28;
 
   bassReadout.textContent = state.bass.toFixed(2);
   midReadout.textContent = state.mid.toFixed(2);
@@ -417,26 +452,61 @@ function sampleParticleMap(x, z, start, activeSize) {
   return state.particleMap[py * particleSize + px] || 0;
 }
 
+function spawnCenterPulse(strength) {
+  centerPulses.push({
+    age: 0,
+    life: 1.55 + state.feedback * 1.15,
+    strength: clamp(strength, 0.18, 1),
+    hue: (state.hue + state.scene * 0.065 + 0.48) % 1,
+  });
+  if (centerPulses.length > centerRingSlots) centerPulses.shift();
+}
+
 function spawnImpact(strength, hasSubBass) {
-  const radius = halfGrid * 0.78 * Math.sqrt(Math.random());
+  const radius = halfGrid * 0.82 * Math.sqrt(Math.random());
   const angle = Math.random() * Math.PI * 2;
-  impacts.push({
+  const impact = {
     x: Math.cos(angle) * radius,
     z: Math.sin(angle) * radius,
     age: 0,
-    life: hasSubBass ? 1.8 : 1.25,
+    life: hasSubBass ? 1.65 : 1.2,
     strength: clamp(strength, 0, 1),
     hue: (state.hue + Math.random() * 0.24 + (hasSubBass ? 0.06 : 0.52)) % 1,
-    reverse: Math.random() > 0.45,
-  });
-  if (impacts.length > bombs.length) impacts.shift();
+  };
+  impacts.push(impact);
+  spawnImpactBurst(impact);
+  if (impacts.length > impactRingSlots) impacts.shift();
 }
 
 function updateImpacts(delta) {
+  for (let i = centerPulses.length - 1; i >= 0; i -= 1) {
+    centerPulses[i].age += delta;
+    if (centerPulses[i].age > centerPulses[i].life) centerPulses.splice(i, 1);
+  }
   for (let i = impacts.length - 1; i >= 0; i -= 1) {
     impacts[i].age += delta;
     if (impacts[i].age > impacts[i].life) impacts.splice(i, 1);
   }
+}
+
+function centerRippleContribution(gx, gz) {
+  let lift = 0;
+  let flash = 0;
+  const distance = Math.sqrt(gx * gx + gz * gz);
+  for (const pulse of centerPulses) {
+    const p = clamp(pulse.age / pulse.life);
+    const radius = p * gridReach * 1.02;
+    const width = 0.62 + p * 0.58 + state.warp * 0.28;
+    const shell = Math.exp(-Math.pow((distance - radius) / width, 2));
+    const wake = distance < radius
+      ? Math.max(0, Math.sin((radius - distance) * 2.25)) * Math.exp(-(radius - distance) * 0.22)
+      : 0;
+    const core = Math.exp(-distance * 0.34) * Math.pow(Math.max(0, 1 - p * 4.2), 2);
+    const amp = pulse.strength * Math.pow(1 - p, 0.48);
+    lift += (shell * 1.75 + wake * 0.28 + core * 3.8) * amp;
+    flash += (shell + core * 0.7) * amp;
+  }
+  return { lift, flash };
 }
 
 function impactContribution(gx, gz) {
@@ -447,14 +517,58 @@ function impactContribution(gx, gz) {
     const dx = gx - impact.x;
     const dz = gz - impact.z;
     const d = Math.sqrt(dx * dx + dz * dz);
-    const radius = impact.reverse ? (1 - p) * 10.5 + 0.6 : p * 12 + 0.4;
-    const shell = Math.exp(-Math.pow(d - radius, 2) * 1.45);
+    const radius = p * (8.5 + impact.strength * 5.5) + 0.35;
+    const shell = Math.exp(-Math.pow((d - radius) / (0.58 + p * 0.42), 2));
     const core = Math.exp(-d * 0.55) * Math.max(0, 1 - p * 2.4);
     const amp = impact.strength * Math.pow(1 - p, 0.72);
-    lift += (shell * 2.6 + core * 4.2) * amp;
+    lift += (shell * 2.3 + core * 4.4) * amp;
     flash += shell * amp;
   }
   return { lift, flash };
+}
+
+function spawnImpactBurst(impact) {
+  const count = 18 + Math.round(impact.strength * 20);
+  for (let i = 0; i < count; i += 1) {
+    const index = burstCursor++ % burstParticleCount;
+    const offset = index * 3;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.8 + Math.random() * 5.2 * impact.strength;
+    const particle = burstState[index];
+    particle.active = true;
+    particle.age = 0;
+    particle.life = 0.55 + Math.random() * 0.75;
+    particle.vx = Math.cos(angle) * speed;
+    particle.vy = 1.2 + Math.random() * 4.8;
+    particle.vz = Math.sin(angle) * speed;
+    burstPositions[offset] = impact.x;
+    burstPositions[offset + 1] = 0.18;
+    burstPositions[offset + 2] = impact.z;
+  }
+}
+
+function updateImpactBursts(delta) {
+  for (let i = 0; i < burstParticleCount; i += 1) {
+    const particle = burstState[i];
+    if (!particle.active) continue;
+    const offset = i * 3;
+    particle.age += delta;
+    if (particle.age >= particle.life) {
+      particle.active = false;
+      burstPositions[offset] = 999;
+      burstPositions[offset + 1] = 999;
+      burstPositions[offset + 2] = 999;
+      continue;
+    }
+    burstPositions[offset] += particle.vx * delta;
+    burstPositions[offset + 1] += particle.vy * delta;
+    burstPositions[offset + 2] += particle.vz * delta;
+    particle.vy -= 8.8 * delta;
+  }
+  burstGeometry.attributes.position.needsUpdate = true;
+  burstMaterial.opacity = state.blackout ? 0 : 0.5 + state.intensity * 0.5;
+  burstMaterial.size = 0.08 + state.size * 0.12;
+  burstMaterial.color.setHSL((state.hue + 0.1) % 1, 0.94, 0.68);
 }
 
 function frequencyAt(column, distance) {
@@ -469,7 +583,7 @@ function frequencyAt(column, distance) {
 }
 
 function updateColumns() {
-  const activeSize = Math.floor(56 + state.density * 56);
+  const activeSize = Math.floor(80 + state.density * (gridSize - 80));
   const start = Math.floor((gridSize - activeSize) / 2);
   const end = start + activeSize;
   const baseHue = (state.hue + state.scene * 0.065) % 1;
@@ -488,10 +602,8 @@ function updateColumns() {
 
       const gx = x * spacing - halfGrid;
       const gz = z * spacing - halfGrid;
-      const dx = x - gridSize * 0.5;
-      const dz = z - gridSize * 0.5;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      const angle = Math.atan2(dz, dx);
+      const distance = Math.sqrt(gx * gx + gz * gz);
+      const angle = Math.atan2(gz, gx);
       const mask = sampleParticleMap(x, z, start, activeSize);
       if (state.particleMap && mask < 0.08) {
         dummy.scale.setScalar(0);
@@ -500,23 +612,27 @@ function updateColumns() {
         continue;
       }
       const freq = frequencyAt(x, distance);
-      const centerFalloff = Math.exp(-distance * (0.045 + state.warp * 0.02));
-      const lowMidForce = state.bass * 0.64 + state.lowMid * 0.92 + state.beat * 0.34;
-      const centerRipple = Math.max(0, Math.sin(distance * (0.46 + state.warp * 0.18) - lowMidForce * 4.8 + state.scene * 0.3));
+      const hasLiveAudio = Boolean(analyser && frequencyData);
+      const idleBreath = hasLiveAudio
+        ? 0
+        : (0.16 + Math.max(0, Math.sin(distance * 0.48 - time * 0.55)) * 0.18) *
+          (0.65 + Math.sin(time * 0.72) * 0.18);
       const cross = Math.sin((gx * Math.cos(time * 0.12) + gz * Math.sin(time * 0.12)) * 1.1 + time);
+      const centerRipple = centerRippleContribution(gx, gz);
       const impact = impactContribution(gx, gz);
       const energy =
-        freq * 0.55 +
-        lowMidForce * centerFalloff * 1.25 * echo +
-        centerRipple * lowMidForce * 0.75 * echo +
-        state.mid * Math.abs(cross) * 0.3 +
-        state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.24 +
-        impact.lift * 0.26;
+        freq * 0.18 +
+        idleBreath +
+        centerRipple.lift * 0.72 * echo +
+        state.mid * Math.abs(cross) * 0.12 +
+        state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.11 +
+        impact.lift * 0.72;
+      const compressedEnergy = Math.log1p(Math.max(0, energy) * 1.4) / 1.4;
       const formLift = state.particleMap ? mask * (0.7 + state.intensity * 2.6) : 0;
       const height =
         0.07 +
         formLift +
-        Math.pow(Math.max(0, energy) * (0.35 + mask * 0.65), 1.12) * (0.95 + state.size * 7.8);
+        Math.pow(compressedEnergy * (0.35 + mask * 0.65), 1.06) * (1.25 + state.size * 5.9);
       const y = height * 0.5;
       const lean = state.warp * state.mid * 0.12;
 
@@ -529,7 +645,12 @@ function updateColumns() {
       color.setHSL(
         (baseHue + energy * 0.18 + mask * 0.16 + distance * 0.004 + angle / (Math.PI * 8) + z * 0.0018) % 1,
         0.7 + state.high * 0.22,
-        0.22 + state.intensity * 0.28 + Math.max(0, energy) * 0.18 + impact.flash * 0.3 + mask * 0.18,
+        0.2 +
+          state.intensity * 0.26 +
+          Math.max(0, energy) * 0.14 +
+          centerRipple.flash * 0.25 +
+          impact.flash * 0.36 +
+          mask * 0.16,
       );
       columns.setColorAt(index, color);
       visible += 1;
@@ -549,49 +670,33 @@ function updateColumns() {
 function updateRings() {
   rings.forEach((ring, index) => {
     const baseRadius = ring.userData.baseRadius || 1;
-    if (index < 3) {
-      const lowMidForce = state.bass * 0.52 + state.lowMid * 0.92 + state.beat * 0.42;
-      const radius = 1.8 + index * 2.1 + lowMidForce * (3.2 + index * 1.3);
+    if (index < centerRingSlots) {
+      const pulse = centerPulses[index];
+      if (!pulse || state.blackout || !state.echo) {
+        ring.material.opacity = 0;
+        return;
+      }
+      const p = clamp(pulse.age / pulse.life);
+      const radius = Math.max(0.35, p * gridReach * 1.02);
       ring.position.set(0, 0.028 + index * 0.01, 0);
       ring.scale.setScalar(radius / baseRadius);
-      ring.rotation.z = rotationPhase;
-      ring.material.opacity = state.echo && !state.blackout ? lowMidForce * (0.08 + state.feedback * 0.16) * (1 - index * 0.18) : 0;
-      ring.material.color.setHSL((state.hue + 0.48 + index * 0.035) % 1, 0.88, 0.58);
+      ring.material.opacity = Math.pow(1 - p, 0.55) * pulse.strength * (0.22 + state.feedback * 0.42);
+      ring.material.color.setHSL(pulse.hue, 0.9, 0.62);
       return;
     }
 
-    const impact = impacts[index - 3];
+    const impact = impacts[index - centerRingSlots];
     if (!impact || state.blackout) {
       ring.material.opacity = 0;
       return;
     }
 
     const p = clamp(impact.age / impact.life);
-    const radius = impact.reverse ? (1 - p) * 10.5 + 0.8 : p * 12 + 0.8;
+    const radius = p * (8.5 + impact.strength * 5.5) + 0.35;
     ring.position.set(impact.x, 0.06 + index * 0.005, impact.z);
     ring.scale.setScalar(radius / baseRadius);
-    ring.rotation.z = rotationPhase;
     ring.material.opacity = Math.pow(1 - p, 0.7) * impact.strength * (0.18 + state.feedback * 0.34);
     ring.material.color.setHSL(impact.hue, 0.92, 0.62);
-  });
-}
-
-function updateBombs() {
-  bombs.forEach((bomb, index) => {
-    const impact = impacts[index];
-    if (!impact || state.blackout) {
-      bomb.visible = false;
-      bomb.material.opacity = 0;
-      return;
-    }
-
-    const fall = clamp(impact.age / Math.min(0.32, impact.life * 0.35));
-    const afterGlow = clamp(1 - (impact.age - 0.32) / Math.max(0.1, impact.life - 0.32));
-    bomb.visible = true;
-    bomb.position.set(impact.x, 6.5 * (1 - fall) + 0.28, impact.z);
-    bomb.scale.setScalar(0.9 + impact.strength * 2.8 + Math.max(0, 1 - fall) * 1.6);
-    bomb.material.opacity = fall < 1 ? 0.72 : afterGlow * 0.28;
-    bomb.material.color.setHSL(impact.hue, 0.95, 0.68);
   });
 }
 
@@ -635,7 +740,9 @@ function updateRotation(delta) {
   const manualScale = 0.08 + state.speed * 0.34;
   rotationPhase += delta * beatTurnsPerSecond * manualScale;
   columns.rotation.y = rotationPhase;
+  ringGroup.rotation.y = rotationPhase;
   particles.rotation.y = rotationPhase * 0.72;
+  impactBursts.rotation.y = rotationPhase;
   floor.rotation.z = rotationPhase;
 }
 
@@ -653,26 +760,24 @@ function draw(now) {
   columns.visible = !state.blackout;
   floor.visible = !state.blackout;
   particles.visible = !state.blackout;
+  impactBursts.visible = !state.blackout;
 
   if (!state.blackout) {
     updateColumns();
     updateRings();
-    updateBombs();
     updateParticles(delta);
+    updateImpactBursts(delta);
     const orbit = (pointerX - 0.5) * 0.34;
-    camera.position.x = Math.sin(orbit) * 18;
-    camera.position.y = 21 + (pointerY - 0.5) * 4 + state.bass * 2;
-    camera.position.z = 31 + Math.cos(orbit) * 2.5;
-    camera.lookAt(0, 2.4 + state.mid * 2.2, 0);
+    camera.position.x = Math.sin(orbit) * 25;
+    camera.position.y = 28 + (pointerY - 0.5) * 5 + state.bass * 2;
+    camera.position.z = 42 + Math.cos(orbit) * 3.2;
+    camera.lookAt(0, 2.2 + state.mid * 1.8, 0);
     floorMaterial.opacity = 0.62 + state.feedback * 0.26;
   } else {
     rings.forEach((ring) => {
       ring.material.opacity = 0;
     });
-    bombs.forEach((bomb) => {
-      bomb.visible = false;
-      bomb.material.opacity = 0;
-    });
+    impactBursts.visible = false;
   }
 
   renderer.render(scene, camera);
