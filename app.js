@@ -35,8 +35,8 @@
 
   const QUALITY_PROFILES = {
     stable: { label: "STABLE", atmosphere: 3000, pixelRatio: 1, glow: false },
-    m1: { label: "M1 DEFAULT", atmosphere: 8000, pixelRatio: 1.25, glow: true },
-    high: { label: "HIGH / M1 MAX", atmosphere: 24000, pixelRatio: 1.25, glow: true },
+    laptop: { label: "LAPTOP", atmosphere: 8000, pixelRatio: 1.25, glow: true },
+    high: { label: "HIGH", atmosphere: 24000, pixelRatio: 1.25, glow: true },
   };
 
   if (CORE_COUNT + MAX_ATMOSPHERE > HARD_PARTICLE_LIMIT) {
@@ -61,7 +61,7 @@
     morph: 0,
     morphTarget: 0,
     particleLabel: "",
-    quality: "m1",
+    quality: "laptop",
     calibrated: false,
     bass: 0,
     mid: 0,
@@ -69,10 +69,22 @@
     subBass: 0,
     lowMid: 0,
     bpm: 0,
+    bpmConfidence: 0,
     fps: 0,
     p95: 0,
     syntheticStress: false,
   };
+
+  const SCENE_PRESETS = [
+    { name: "RANGE ECHO", hue: 0.9, warp: 0.42, feedback: 0.58, camera: [0, 10.2, 27.5] },
+    { name: "SILK CURRENT", hue: 0.5, warp: 0.3, feedback: 0.64, camera: [-7, 7.8, 25] },
+    { name: "LIQUID LENS", hue: 0.78, warp: 0.2, feedback: 0.5, camera: [0, 14.2, 23.5] },
+    { name: "ORBITAL", hue: 0.58, warp: 0.52, feedback: 0.72, camera: [9, 8.5, 25.5] },
+    { name: "AURORA", hue: 0.38, warp: 0.66, feedback: 0.76, camera: [-10, 6.7, 24] },
+    { name: "MONOLITH", hue: 0.08, warp: 0.14, feedback: 0.42, camera: [0, 8.2, 29] },
+    { name: "SOLAR BLOOM", hue: 0.94, warp: 0.36, feedback: 0.68, camera: [7, 12.5, 25] },
+    { name: "DEEP SPACE", hue: 0.7, warp: 0.62, feedback: 0.86, camera: [-5, 4.8, 24] },
+  ];
 
   const dom = Object.fromEntries(
     [
@@ -173,6 +185,8 @@
     uMorph: { value: 0 },
     uEffect: { value: 0 },
     uEffectAmount: { value: 0 },
+    uSceneStyle: { value: 0 },
+    uSceneTransition: { value: 0 },
     uPointScale: { value: 1 },
     uRipples: { value: rippleUniforms },
     uImpacts: { value: impactUniforms },
@@ -199,6 +213,8 @@
     uniform float uMorph;
     uniform float uEffect;
     uniform float uEffectAmount;
+    uniform float uSceneStyle;
+    uniform float uSceneTransition;
     uniform float uPointScale;
     uniform vec4 uRipples[6];
     uniform vec4 uImpacts[8];
@@ -295,6 +311,51 @@
         * sin(angle * 6.0 - uTime * (0.9 + uHigh * 2.0) + distanceFromCenter * 0.22)
         * uWarp * (uMid + uHigh) * 0.075;
 
+      // Eight scene memories share one field, but use genuinely different
+      // spatial grammars. Keeping this in the vertex shader makes scene
+      // changes cheap enough for the M1 budget.
+      float sceneBand = floor(uSceneStyle + 0.5);
+      if (sceneBand > 0.5 && sceneBand < 1.5) {
+        // SILK CURRENT — broad, continuous travelling folds.
+        field.y += sin(field.x * 0.22 + uTime * 0.74) * 1.25
+          + cos(field.z * 0.17 - uTime * 0.48) * 0.72;
+        field.x += sin(field.z * 0.13 + uTime * 0.3) * 0.55;
+      } else if (sceneBand > 1.5 && sceneBand < 2.5) {
+        // LIQUID LENS — smooth central bowl and pearlescent breathing.
+        float lens = exp(-distanceFromCenter * 0.075);
+        field.y += lens * (2.4 + sin(uTime * 0.58) * 1.15);
+        field.xz *= 0.92 + lens * 0.1;
+      } else if (sceneBand > 2.5 && sceneBand < 3.5) {
+        // ORBITAL — a slowly opening spiral disc.
+        field.xz = rotate2d(distanceFromCenter * 0.045 + uTime * 0.1) * field.xz;
+        field.y += sin(angle * 4.0 + distanceFromCenter * 0.26 - uTime) * 0.72;
+      } else if (sceneBand > 3.5 && sceneBand < 4.5) {
+        // AURORA — diagonal ribbons with long, silky motion.
+        field.y += sin(field.x * 0.16 + field.z * 0.09 - uTime * 0.62) * 1.65;
+        field.z += sin(field.x * 0.11 + uTime * 0.28) * 0.85;
+      } else if (sceneBand > 4.5 && sceneBand < 5.5) {
+        // MONOLITH — restrained monochrome terraces.
+        field.y = floor((field.y + sin(distanceFromCenter * 0.38 - uTime * 0.6)) * 2.2) / 2.2;
+        field.xz *= 0.94;
+      } else if (sceneBand > 5.5 && sceneBand < 6.5) {
+        // BLOOM — petal-like radial sculpture.
+        field.y += pow(max(0.0, cos(angle * 7.0 + uTime * 0.22)), 5.0)
+          * exp(-distanceFromCenter * 0.055) * 3.2;
+        field.xz *= 0.9 + 0.08 * sin(angle * 7.0);
+      } else if (sceneBand > 6.5) {
+        // DEEP SPACE — suspended constellation with greater Z depth.
+        field.y += (aSeed - 0.5) * 5.2 + sin(aSeed * 31.0 + uTime * 0.3) * 0.5;
+        field.z += (aSeed - 0.5) * 6.0;
+      }
+
+      // Scene changes contract, corkscrew and bloom. The event is visible,
+      // while the particle pool and draw calls remain unchanged.
+      float transitionBell = sin(clamp(uSceneTransition, 0.0, 1.0) * 3.14159265);
+      float transitionTurn = transitionBell * (1.4 + aSeed * 2.3);
+      field.xz = rotate2d(transitionTurn) * field.xz;
+      field *= 1.0 - transitionBell * (0.2 + aSeed * 0.18);
+      field.y += (aSeed - 0.5) * transitionBell * 8.0;
+
       vec3 form = aTarget;
       float effect = uEffectAmount;
       if (uEffect > 0.5 && uEffect < 1.5) {
@@ -341,13 +402,22 @@
     varying float vSeed;
     varying float vHue;
     uniform float uIntensity;
+    uniform float uSceneStyle;
 
     vec3 palette(float hueShift, float energy) {
       vec3 violet = vec3(0.31, 0.055, 0.52);
       vec3 magenta = vec3(1.0, 0.055, 0.58);
       vec3 pearl = vec3(1.0, 0.91, 0.99);
       float drift = clamp(hueShift + vSeed * 0.1, 0.0, 1.0);
+      float style = floor(uSceneStyle + 0.5);
       vec3 base = mix(violet, magenta, 0.35 + drift * 0.45);
+      if (style > 0.5 && style < 1.5) base = mix(vec3(0.05, 0.48, 0.78), vec3(0.66, 0.92, 1.0), drift);
+      else if (style > 1.5 && style < 2.5) base = mix(vec3(0.38, 0.18, 0.55), vec3(1.0, 0.72, 0.84), drift);
+      else if (style > 2.5 && style < 3.5) base = mix(vec3(0.18, 0.06, 0.55), vec3(0.18, 0.88, 0.78), drift);
+      else if (style > 3.5 && style < 4.5) base = mix(vec3(0.08, 0.38, 0.52), vec3(0.72, 1.0, 0.68), drift);
+      else if (style > 4.5 && style < 5.5) base = mix(vec3(0.18), vec3(0.92), drift);
+      else if (style > 5.5 && style < 6.5) base = mix(vec3(0.72, 0.12, 0.22), vec3(1.0, 0.67, 0.12), drift);
+      else if (style > 6.5) base = mix(vec3(0.12, 0.14, 0.48), vec3(0.58, 0.4, 1.0), drift);
       return mix(base, pearl, smoothstep(0.55, 1.7, energy));
     }
 
@@ -560,6 +630,7 @@
     uResolution: { value: new THREE.Vector2(1, 1) },
     uTime: { value: 0 },
     uGlow: { value: 1 },
+    uSceneStyle: { value: 0 },
   };
   const postMaterial = new THREE.ShaderMaterial({
     uniforms: postUniforms,
@@ -576,6 +647,7 @@
       uniform vec2 uResolution;
       uniform float uTime;
       uniform float uGlow;
+      uniform float uSceneStyle;
       varying vec2 vUv;
 
       float hash(vec2 p) {
@@ -596,9 +668,11 @@
         bloom += texture2D(uScene, vUv + texel * vec2(-1.5, -1.5)).rgb;
         bloom *= 0.125;
         float vignette = smoothstep(0.86, 0.28, length(vUv - 0.5));
-        float grain = (hash(vUv * uResolution + uTime) - 0.5) * 0.012;
+        float modernity = step(0.5, uSceneStyle);
+        float grain = (hash(vUv * uResolution + uTime) - 0.5)
+          * mix(0.012, 0.0025, modernity);
         vec3 color = center + max(bloom - 0.1, 0.0) * 0.18 * uGlow;
-        color *= 0.72 + vignette * 0.28;
+        color *= mix(0.72 + vignette * 0.28, 0.88 + vignette * 0.12, modernity);
         color += grain;
         gl_FragColor = vec4(color, 1.0);
       }
@@ -677,7 +751,15 @@
   let previousRawHigh = 0;
   let rotation = 0;
   let rotationTarget = 0;
-  const beatIntervals = [];
+  const beatOnsets = [];
+  let lastTempoOnsetAt = -10;
+  let sceneTransition = 1;
+  let sceneTransitionStartedAt = -10;
+  let sceneTransitionDuration = 1.25;
+  let cameraCutOffset = 0;
+  let cameraDollyPulse = 0;
+  let cameraCutPending = false;
+  let tempoBeatCount = 0;
   const lowMidHistory = [];
   const subBassHistory = [];
   const highHistory = [];
@@ -690,13 +772,14 @@
   let idleMeteorAt = -10;
 
   function configureQuality(profileName) {
-    const profile = QUALITY_PROFILES[profileName] || QUALITY_PROFILES.m1;
-    state.quality = profileName;
+    const resolvedName = QUALITY_PROFILES[profileName] ? profileName : "laptop";
+    const profile = QUALITY_PROFILES[resolvedName];
+    state.quality = resolvedName;
     atmosphereGeometry.setDrawRange(0, profile.atmosphere);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.pixelRatio));
     postUniforms.uGlow.value = profile.glow ? 1 : 0;
     qualityButtons.forEach((button) =>
-      button.classList.toggle("active", button.dataset.quality === profileName),
+      button.classList.toggle("active", button.dataset.quality === resolvedName),
     );
     dom.qualityReadout.textContent = profile.label;
     dom.particleReadout.textContent = `${((CORE_COUNT + profile.atmosphere) / 1000).toFixed(1)}k`;
@@ -706,10 +789,10 @@
 
   function downgradeQuality() {
     if (state.quality === "high") {
-      configureQuality("m1");
+      configureQuality("laptop");
       return;
     }
-    if (state.quality === "m1") configureQuality("stable");
+    if (state.quality === "laptop") configureQuality("stable");
   }
 
   function resize() {
@@ -743,24 +826,27 @@
   }
 
   function setScene(index, shouldSend = true) {
-    state.scene = Number(index) || 0;
+    const nextScene = Math.max(0, Math.min(SCENE_PRESETS.length - 1, Number(index) || 0));
+    if (nextScene !== state.scene || shouldSend) {
+      sceneTransition = 0;
+      sceneTransitionStartedAt = performance.now() / 1000;
+      sceneTransitionDuration = state.bpmConfidence > 0.35 && state.bpm
+        ? clamp(60 / state.bpm * 1.6, 0.75, 1.45)
+        : 1.2;
+      cameraCutOffset = (Math.random() - 0.5) * 0.72;
+      cameraDollyPulse = 1;
+      cameraCutPending = true;
+    }
+    state.scene = nextScene;
     sceneButtons.forEach((button) =>
       button.classList.toggle("active", Number(button.dataset.scene) === state.scene),
     );
-    const presets = [
-      { hue: 0.9, warp: 0.42, feedback: 0.58 },
-      { hue: 0.74, warp: 0.56, feedback: 0.72 },
-      { hue: 0.98, warp: 0.24, feedback: 0.46 },
-      { hue: 0.62, warp: 0.72, feedback: 0.64 },
-      { hue: 0.84, warp: 0.34, feedback: 0.82 },
-      { hue: 0.7, warp: 0.68, feedback: 0.5 },
-      { hue: 1, warp: 0.18, feedback: 0.68 },
-      { hue: 0.8, warp: 0.48, feedback: 0.9 },
-    ];
-    const preset = presets[state.scene];
+    const preset = SCENE_PRESETS[state.scene];
     setParam("hue", preset.hue, false);
     setParam("warp", preset.warp, false);
     setParam("feedback", preset.feedback, false);
+    coreUniforms.uSceneStyle.value = state.scene;
+    updateModeLabel();
     if (shouldSend) sendParam("scene", state.scene);
   }
 
@@ -786,8 +872,78 @@
     const audioLabel = analyser ? "LIVE AUDIO" : "IDLE";
     dom.modeLabel.textContent =
       state.mode === "form"
-        ? `PARTICLE FORM / ${state.particleLabel || "ECHO"}`
-        : `RANGE FIELD / ${audioLabel}`;
+        ? `PARTICLE FORM / ${state.particleLabel || "ARE"}`
+        : `${SCENE_PRESETS[state.scene].name} / ${audioLabel}`;
+  }
+
+  function normalizeTempo(bpm) {
+    let value = bpm;
+    while (value < 72) value *= 2;
+    while (value > 168) value /= 2;
+    return value;
+  }
+
+  function registerTempoOnset(nowSeconds, strength = 1) {
+    if (nowSeconds - lastTempoOnsetAt < 0.24) return;
+    lastTempoOnsetAt = nowSeconds;
+    tempoBeatCount += 1;
+    cameraDollyPulse = Math.max(cameraDollyPulse, strength * 0.7);
+    beatOnsets.push({ time: nowSeconds, strength: clamp(strength, 0.15, 1) });
+    while (beatOnsets.length > 36 || nowSeconds - beatOnsets[0].time > 18) beatOnsets.shift();
+    if (beatOnsets.length < 5) return;
+
+    const bins = new Float32Array(193); // 72–168 BPM in 0.5 BPM steps.
+    for (let end = 1; end < beatOnsets.length; end += 1) {
+      for (let gap = 1; gap <= 4 && end - gap >= 0; gap += 1) {
+        const interval = beatOnsets[end].time - beatOnsets[end - gap].time;
+        if (interval < 0.25 || interval > 3.4) continue;
+        const candidate = normalizeTempo((60 * gap) / interval);
+        const center = Math.round((candidate - 72) * 2);
+        const recency = 0.55 + end / beatOnsets.length * 0.45;
+        const weight =
+          Math.sqrt(beatOnsets[end].strength * beatOnsets[end - gap].strength) *
+          recency /
+          Math.sqrt(gap);
+        for (let offset = -3; offset <= 3; offset += 1) {
+          const bin = center + offset;
+          if (bin >= 0 && bin < bins.length) bins[bin] += weight * Math.exp(-offset * offset / 3.2);
+        }
+      }
+    }
+
+    let bestIndex = 0;
+    let bestScore = 0;
+    let totalScore = 0;
+    bins.forEach((score, index) => {
+      const candidate = 72 + index * 0.5;
+      const continuity =
+        state.bpm > 0 ? Math.exp(-Math.abs(candidate - state.bpm) / 16) * 0.18 + 0.82 : 1;
+      const adjusted = score * continuity;
+      totalScore += adjusted;
+      if (adjusted > bestScore) {
+        bestScore = adjusted;
+        bestIndex = index;
+      }
+    });
+    const estimate = 72 + bestIndex * 0.5;
+    const confidence = clamp((bestScore / Math.max(0.001, totalScore)) * 9.5);
+    state.bpmConfidence = state.bpmConfidence * 0.7 + confidence * 0.3;
+    if (state.bpmConfidence > 0.2) {
+      if (!state.bpm) state.bpm = estimate;
+      else {
+        const delta = estimate - state.bpm;
+        const safeDelta = Math.abs(delta) > 24 && state.bpmConfidence < 0.58 ? 0 : delta;
+        state.bpm += safeDelta * (0.08 + state.bpmConfidence * 0.16);
+      }
+    }
+    if (
+      strength > 0.72 &&
+      state.bpmConfidence > 0.5 &&
+      tempoBeatCount % 8 === 0
+    ) {
+      cameraCutOffset = (Math.random() < 0.5 ? -1 : 1) * (0.38 + Math.random() * 0.32);
+      cameraCutPending = true;
+    }
   }
 
   async function sendParam(name, value) {
@@ -1059,6 +1215,21 @@
     const meteorTransient =
       rawHigh > meteorThreshold &&
       highFlux > Math.max(0.0018, highStats.deviation * 0.1);
+    const tempoTransient =
+      rippleTransient ||
+      subBassTransient ||
+      (
+        rawLowMid > lowStats.mean + lowStats.deviation * 0.18 &&
+        lowFlux > Math.max(0.0042, lowStats.deviation * 0.13)
+      ) ||
+      (
+        rawSubBass > subStats.mean + subStats.deviation * 0.22 &&
+        subFlux > Math.max(0.0044, subStats.deviation * 0.15)
+      ) ||
+      (
+        rawLowMid > lowStats.mean &&
+        highFlux > Math.max(0.012, highStats.deviation * 0.45)
+      );
     const rippleActive = rawLowMid > Math.max(0.024, lowStats.mean * 0.72);
     const impactActive =
       Math.max(rawSubBass, rawLowMid * 0.68) >
@@ -1071,6 +1242,25 @@
       MOTION_TUNING.rippleDensityFloor,
     );
 
+    if (live && audible && tempoTransient) {
+      registerTempoOnset(
+        nowSeconds,
+        clamp(
+          0.2 +
+          rawLowMid * 0.82 +
+          rawSubBass * 0.5 +
+          lowFlux * 4.2 +
+          subFlux * 3.2 +
+          highFlux * 0.8,
+        ),
+      );
+    } else if (nowSeconds - lastTempoOnsetAt > 3.5) {
+      state.bpmConfidence *= 0.992;
+      if (state.bpmConfidence < 0.08 && nowSeconds - lastTempoOnsetAt > 8) {
+        state.bpm = 0;
+      }
+    }
+
     if (live && audible && nowSeconds - lastRippleAt > MOTION_TUNING.rippleCooldown) {
       const densityFloorHit = rippleActive && nowSeconds - lastRippleAt > rippleFloor;
       if (rippleTransient || densityFloorHit) {
@@ -1078,20 +1268,7 @@
           clamp(0.24 + rawLowMid * 1.35 + lowFlux * 4.2),
           densityFloorHit && !rippleTransient ? "density-floor" : "audio",
         );
-        if (rippleTransient) {
-          if (lastAudioAt > 0) {
-            const interval = nowSeconds - lastAudioAt;
-            if (interval > 0.26 && interval < 1.25) {
-              beatIntervals.push(interval);
-              if (beatIntervals.length > 14) beatIntervals.shift();
-              const sorted = [...beatIntervals].sort((a, b) => a - b);
-              const median = sorted[Math.floor(sorted.length / 2)];
-              const bpm = 60 / median;
-              state.bpm = bpm < 70 ? bpm * 2 : bpm > 170 ? bpm / 2 : bpm;
-            }
-          }
-          lastAudioAt = nowSeconds;
-        }
+        if (rippleTransient) lastAudioAt = nowSeconds;
         lastRippleAt = nowSeconds;
       }
     }
@@ -1168,7 +1345,10 @@
     dom.bassReadout.textContent = state.bass.toFixed(2);
     dom.midReadout.textContent = state.mid.toFixed(2);
     dom.highReadout.textContent = state.high.toFixed(2);
-    dom.bpmReadout.textContent = state.bpm ? String(Math.round(state.bpm)) : "--";
+    dom.bpmReadout.textContent =
+      state.bpm && state.bpmConfidence > 0.18
+        ? `${Math.round(state.bpm)}${state.bpmConfidence < 0.42 ? "?" : ""}`
+        : "--";
   }
 
   function updateEvents(delta) {
@@ -1289,6 +1469,13 @@
       rotationTarget = (bpm / 60) * (0.012 + state.speed * 0.034);
       rotation += delta * rotationTarget;
       state.morph += (state.morphTarget - state.morph) * Math.min(1, delta * 2.8);
+      if (sceneTransition < 1) {
+        sceneTransition = clamp(
+          (now / 1000 - sceneTransitionStartedAt) / sceneTransitionDuration,
+        );
+      }
+      cameraDollyPulse *= Math.exp(-delta * 3.6);
+      cameraCutOffset *= Math.exp(-delta * 0.72);
     }
 
     coreUniforms.uTime.value = time;
@@ -1300,6 +1487,8 @@
     coreUniforms.uMode.value = state.mode === "form" ? 1 : 0;
     coreUniforms.uMorph.value = state.morph;
     coreUniforms.uEffect.value = state.effect;
+    coreUniforms.uSceneStyle.value = state.scene;
+    coreUniforms.uSceneTransition.value = sceneTransition;
     coreUniforms.uEffectAmount.value +=
       ((state.mode === "form" && state.effect > 0 ? 1 : 0) -
         coreUniforms.uEffectAmount.value) *
@@ -1308,6 +1497,7 @@
     atmosphereUniforms.uIntensity.value = state.intensity;
     atmosphereUniforms.uHue.value = state.hue;
     postUniforms.uTime.value = time;
+    postUniforms.uSceneStyle.value = state.scene;
 
     coreField.visible = !state.blackout;
     atmosphere.visible = !state.blackout;
@@ -1317,12 +1507,35 @@
       (desiredCoreRotation - coreField.rotation.y) * Math.min(1, delta * 3.6);
     atmosphere.rotation.y = rotation * 0.58;
 
-    const orbit = (pointerX - 0.5) * 0.28;
-    const height = 9.6 + (0.5 - pointerY) * 2.2;
-    camera.position.x += (Math.sin(orbit) * 11 - camera.position.x) * 0.035;
-    camera.position.y += (height - camera.position.y) * 0.035;
-    camera.position.z += (27.5 + Math.cos(orbit) * 1.4 - camera.position.z) * 0.035;
-    camera.lookAt(0, 1.3 + state.bass * 1.4, 0);
+    const cameraPreset = SCENE_PRESETS[state.scene].camera;
+    const bpmPhase = time * ((state.bpm || 72) / 60);
+    const orbit =
+      (pointerX - 0.5) * 0.32 +
+      Math.sin(bpmPhase * 0.32 + state.scene) * (0.05 + state.scene * 0.006) +
+      cameraCutOffset;
+    const targetX = cameraPreset[0] + Math.sin(orbit) * 8.5;
+    const targetY =
+      cameraPreset[1] +
+      (0.5 - pointerY) * 2.2 +
+      Math.sin(bpmPhase * 0.18) * 0.42;
+    const targetZ =
+      cameraPreset[2] +
+      Math.cos(orbit) * 1.3 -
+      cameraDollyPulse * (2.2 + state.bass * 1.8);
+    const cameraEase = Math.min(1, delta * (state.scene === 0 ? 2.2 : 1.6));
+    if (cameraCutPending) {
+      camera.position.set(targetX, targetY, targetZ);
+      cameraCutPending = false;
+    } else {
+      camera.position.x += (targetX - camera.position.x) * cameraEase;
+      camera.position.y += (targetY - camera.position.y) * cameraEase;
+      camera.position.z += (targetZ - camera.position.z) * cameraEase;
+    }
+    camera.lookAt(
+      Math.sin(bpmPhase * 0.22 + state.scene) * 0.7,
+      1.3 + state.bass * 1.4,
+      Math.cos(bpmPhase * 0.17) * 0.55,
+    );
 
     renderFrame();
     updatePerformance(now, delta);
@@ -1364,7 +1577,7 @@
   }
 
   function applyTextForm() {
-    const label = (dom.particleText.value.trim() || "ECHO").toUpperCase();
+    const label = (dom.particleText.value.trim() || "ARE").toUpperCase();
     formContext.clearRect(0, 0, FORM_CANVAS_SIZE, FORM_CANVAS_SIZE);
     formContext.fillStyle = "#ffffff";
     formContext.textAlign = "center";
@@ -1548,6 +1761,11 @@
       meteors: meteors.filter((meteor) => meteor.active).length,
       eventCounters: { ...eventCounters },
       motion: { ...motionDebug },
+      bpm: state.bpm,
+      bpmConfidence: state.bpmConfidence,
+      scene: state.scene,
+      sceneName: SCENE_PRESETS[state.scene].name,
+      sceneTransition,
       renderer: renderer.info.render,
     }),
     stress: (enabled = true) => {
@@ -1582,11 +1800,19 @@
     },
     tuning: MOTION_TUNING,
     quality: (name) => configureQuality(name),
+    scene: setScene,
     mode: setMode,
     effect: setEffect,
+    tempoOnset: registerTempoOnset,
+    resetTempo: () => {
+      beatOnsets.length = 0;
+      lastTempoOnsetAt = -10;
+      state.bpm = 0;
+      state.bpmConfidence = 0;
+    },
   };
 
-  configureQuality("m1");
+  configureQuality("laptop");
   setScene(0, false);
   setEffect(0);
   setMode("range");

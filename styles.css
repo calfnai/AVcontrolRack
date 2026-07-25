@@ -93,7 +93,7 @@ button,
 
 h1 {
   margin: 9px 0 0;
-  color: rgba(255, 248, 254, 0.92);
+  color: rgba(255, 248, 254, 0.5);
   font-family:
     Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(52px, 8.2vw, 126px);
@@ -101,6 +101,8 @@ h1 {
   letter-spacing: -0.055em;
   line-height: 0.72;
   mix-blend-mode: screen;
+  opacity: 0.76;
+  text-shadow: 0 0 32px rgba(255, 75, 187, 0.08);
   text-transform: uppercase;
 }
 
