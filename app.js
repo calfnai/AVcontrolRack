@@ -18,6 +18,8 @@ const state = {
   blackout: false,
   freeze: false,
   echo: true,
+  particleMap: null,
+  particleLabel: "",
   bass: 0,
   mid: 0,
   high: 0,
@@ -35,10 +37,15 @@ const midReadout = document.querySelector("#midReadout");
 const highReadout = document.querySelector("#highReadout");
 const modeLabel = document.querySelector("#modeLabel");
 const audioToggle = document.querySelector("#audioToggle");
+const audioInput = document.querySelector("#audioInput");
 const echoToggle = document.querySelector("#echoToggle");
 const blackoutToggle = document.querySelector("#blackoutToggle");
 const freezeToggle = document.querySelector("#freezeToggle");
 const randomize = document.querySelector("#randomize");
+const particleText = document.querySelector("#particleText");
+const textParticle = document.querySelector("#textParticle");
+const imageInput = document.querySelector("#imageInput");
+const clearParticle = document.querySelector("#clearParticle");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -138,10 +145,18 @@ scene.add(accentLight);
 let audioContext;
 let analyser;
 let frequencyData;
+let audioSource;
+let audioElement;
+let microphoneStream;
 let time = 0;
 let last = performance.now();
 let pointerX = 0.5;
 let pointerY = 0.5;
+const particleCanvas = document.createElement("canvas");
+const particleCtx = particleCanvas.getContext("2d", { willReadFrequently: true });
+const particleSize = 128;
+particleCanvas.width = particleSize;
+particleCanvas.height = particleSize;
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -166,7 +181,7 @@ function setScene(index, shouldSend = true) {
   );
   const label = sceneNames[state.scene];
   sceneReadout.textContent = label;
-  modeLabel.textContent = `RANGE ECHO ${label}`;
+  modeLabel.textContent = state.particleMap ? `PARTICLE ${state.particleLabel || label}` : `RANGE ECHO ${label}`;
   if (shouldSend) sendParam("scene", state.scene);
 }
 
@@ -181,6 +196,35 @@ async function sendParam(name, value) {
   } catch {
     setStatus(oscStatus, "WEB ONLY", false);
   }
+}
+
+function describeAudioError(error) {
+  if (!window.isSecureContext) return "MIC NEEDS HTTPS";
+  if (!navigator.mediaDevices?.getUserMedia) return "NO MIC API";
+  if (error?.name === "NotAllowedError" || error?.name === "SecurityError") return "MIC DENIED";
+  if (error?.name === "NotFoundError" || error?.name === "DevicesNotFoundError") return "NO MIC";
+  if (error?.name === "NotReadableError" || error?.name === "TrackStartError") return "MIC BUSY";
+  if (error?.name === "OverconstrainedError") return "MIC CONFIG";
+  return "AUDIO BLOCK";
+}
+
+function ensureAnalyser() {
+  audioContext ||= new AudioContext();
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.72;
+  frequencyData = new Uint8Array(analyser.frequencyBinCount);
+  return analyser;
+}
+
+async function connectAudioNode(source, shouldMonitor = false) {
+  if (audioSource) audioSource.disconnect();
+  if (analyser) analyser.disconnect();
+  const nextAnalyser = ensureAnalyser();
+  audioSource = source;
+  audioSource.connect(nextAnalyser);
+  if (shouldMonitor) nextAnalyser.connect(audioContext.destination);
+  if (audioContext.state === "suspended") await audioContext.resume();
 }
 
 function band(from, to) {
@@ -213,16 +257,85 @@ function updateAudio() {
 }
 
 async function startAudio() {
-  if (audioContext) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("getUserMedia is unavailable");
+  }
+  if (microphoneStream) return;
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioContext = new AudioContext();
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.72;
-  frequencyData = new Uint8Array(analyser.frequencyBinCount);
-  audioContext.createMediaStreamSource(stream).connect(analyser);
+  microphoneStream = stream;
+  audioContext ||= new AudioContext();
+  await connectAudioNode(audioContext.createMediaStreamSource(stream), false);
   setStatus(audioStatus, "AUDIO ON", true);
   audioToggle.classList.add("active");
+}
+
+async function startAudioFile(file) {
+  if (!file) return;
+  audioElement?.pause();
+  audioElement = new Audio(URL.createObjectURL(file));
+  audioElement.loop = true;
+  audioContext ||= new AudioContext();
+  await connectAudioNode(audioContext.createMediaElementSource(audioElement), true);
+  await audioElement.play();
+  setStatus(audioStatus, "FILE ON", true);
+  audioToggle.classList.remove("active");
+}
+
+function setParticleMap(map, label) {
+  state.particleMap = map;
+  state.particleLabel = label;
+  modeLabel.textContent = map ? `PARTICLE ${label}` : `RANGE ECHO ${sceneNames[state.scene]}`;
+}
+
+function particleMapFromCanvas(label) {
+  const pixels = particleCtx.getImageData(0, 0, particleSize, particleSize).data;
+  const map = new Float32Array(particleSize * particleSize);
+  for (let i = 0; i < map.length; i += 1) {
+    const offset = i * 4;
+    const luma = (pixels[offset] * 0.2126 + pixels[offset + 1] * 0.7152 + pixels[offset + 2] * 0.0722) / 255;
+    map[i] = luma * (pixels[offset + 3] / 255);
+  }
+  setParticleMap(map, label);
+}
+
+function applyTextParticle() {
+  const value = (particleText.value || "AV").trim().slice(0, 12).toUpperCase();
+  particleCtx.clearRect(0, 0, particleSize, particleSize);
+  particleCtx.fillStyle = "#000";
+  particleCtx.fillRect(0, 0, particleSize, particleSize);
+  particleCtx.fillStyle = "#fff";
+  particleCtx.textAlign = "center";
+  particleCtx.textBaseline = "middle";
+  const size = value.length > 6 ? 40 : value.length > 3 ? 52 : 70;
+  particleCtx.font = `900 ${size}px Inter, Arial, sans-serif`;
+  particleCtx.fillText(value, particleSize / 2, particleSize / 2 + 4);
+  particleMapFromCanvas(value);
+}
+
+function applyImageParticle(file) {
+  if (!file) return;
+  const image = new Image();
+  image.onload = () => {
+    particleCtx.clearRect(0, 0, particleSize, particleSize);
+    particleCtx.fillStyle = "#000";
+    particleCtx.fillRect(0, 0, particleSize, particleSize);
+    const scale = Math.min(particleSize / image.width, particleSize / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    particleCtx.drawImage(image, (particleSize - width) / 2, (particleSize - height) / 2, width, height);
+    particleMapFromCanvas("IMAGE");
+    URL.revokeObjectURL(image.src);
+  };
+  image.src = URL.createObjectURL(file);
+}
+
+function sampleParticleMap(x, z, start, activeSize) {
+  if (!state.particleMap) return 1;
+  const u = clamp((x - start) / Math.max(1, activeSize - 1));
+  const v = clamp((z - start) / Math.max(1, activeSize - 1));
+  const px = Math.floor(u * (particleSize - 1));
+  const py = Math.floor(v * (particleSize - 1));
+  return state.particleMap[py * particleSize + px] || 0;
 }
 
 function frequencyAt(column, distance) {
@@ -257,6 +370,13 @@ function updateColumns() {
       const dz = z - gridSize * 0.5;
       const distance = Math.sqrt(dx * dx + dz * dz);
       const angle = Math.atan2(dz, dx);
+      const mask = sampleParticleMap(x, z, start, activeSize);
+      if (state.particleMap && mask < 0.08) {
+        dummy.scale.setScalar(0);
+        dummy.updateMatrix();
+        columns.setMatrixAt(index, dummy.matrix);
+        continue;
+      }
       const freq = frequencyAt(x, distance);
       const ripple = Math.sin(distance * (0.38 + state.warp * 0.5) - time * (2.5 + state.speed * 4) + state.scene);
       const cross = Math.sin((gx * Math.cos(time * 0.12) + gz * Math.sin(time * 0.12)) * 1.1 + time);
@@ -266,7 +386,8 @@ function updateColumns() {
           state.mid * Math.abs(cross) * 0.5 +
           state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.35,
       );
-      const height = 0.08 + Math.pow(energy, 1.35) * (0.85 + state.size * 6.4);
+      const formLift = state.particleMap ? mask * (0.7 + state.intensity * 2.6) : 0;
+      const height = 0.08 + formLift + Math.pow(energy * (0.35 + mask * 0.65), 1.35) * (0.85 + state.size * 6.4);
       const y = height * 0.5;
       const lean = state.warp * state.mid * 0.12;
 
@@ -277,9 +398,9 @@ function updateColumns() {
       columns.setMatrixAt(index, dummy.matrix);
 
       color.setHSL(
-        (baseHue + energy * 0.18 + distance * 0.004 + angle / (Math.PI * 8) + z * 0.0018) % 1,
+        (baseHue + energy * 0.18 + mask * 0.16 + distance * 0.004 + angle / (Math.PI * 8) + z * 0.0018) % 1,
         0.7 + state.high * 0.22,
-        0.27 + state.intensity * 0.34 + energy * 0.3,
+        0.25 + state.intensity * 0.32 + energy * 0.26 + mask * 0.2,
       );
       columns.setColorAt(index, color);
       visible += 1;
@@ -432,7 +553,11 @@ sceneButtons.forEach((button) => {
 });
 
 audioToggle.addEventListener("click", () => {
-  startAudio().catch(() => setStatus(audioStatus, "AUDIO BLOCK", false));
+  startAudio().catch((error) => setStatus(audioStatus, describeAudioError(error), false));
+});
+
+audioInput.addEventListener("change", () => {
+  startAudioFile(audioInput.files?.[0]).catch((error) => setStatus(audioStatus, describeAudioError(error), false));
 });
 
 echoToggle.addEventListener("click", () => {
@@ -454,6 +579,16 @@ freezeToggle.addEventListener("click", () => {
 });
 
 randomize.addEventListener("click", randomizeParams);
+
+textParticle.addEventListener("click", applyTextParticle);
+
+particleText.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") applyTextParticle();
+});
+
+imageInput.addEventListener("change", () => applyImageParticle(imageInput.files?.[0]));
+
+clearParticle.addEventListener("click", () => setParticleMap(null, ""));
 
 window.addEventListener("resize", resize);
 window.addEventListener("pointermove", (event) => {

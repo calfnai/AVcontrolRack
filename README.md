@@ -114,6 +114,17 @@ Note 36-43 -> scene A-H
 
 点击 `MIC` 后，浏览器会请求麦克风权限。音频分析会驱动画面里的 bass / mid / high，并显示在左下角读数里。
 
+如果 `MIC` 失败，状态栏会显示具体原因：
+
+```text
+MIC DENIED      浏览器或系统拒绝了麦克风权限
+NO MIC          没有可用输入设备
+MIC BUSY        麦克风被系统或其他应用占用
+MIC NEEDS HTTPS 当前浏览器环境不允许调用麦克风
+```
+
+本地调试优先使用 Chrome / Safari 打开 GitHub Pages 或 `http://localhost:<port>`。如果浏览器环境不允许麦克风，可以点 `AUDIO` 选择本地音频文件，页面会用该音频文件驱动同一套 bass / mid / high 分析。
+
 当前 3D 映射：
 
 ```text
@@ -123,3 +134,15 @@ high -> 高频粒子、亮边和闪烁
 ```
 
 不打开麦克风时，页面会用一组轻微的 idle 信号保持动画可看。
+
+## Particleify
+
+控制台提供一个轻量版 Particleify 面板：
+
+```text
+TEXT  -> 把输入框里的文字转成 3D 柱阵轮廓
+IMAGE -> 上传图片，用图片亮度生成 3D 柱阵轮廓
+CLEAR -> 回到完整音域网格
+```
+
+Particleify 轮廓只是视觉 mask；音频、场景、速度、密度、反馈、扭曲、尺寸、色相和强度滑杆仍然会继续影响 3D 舞台。

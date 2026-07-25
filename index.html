@@ -35,10 +35,20 @@
 
         <div class="section transport">
           <button id="audioToggle" class="command">MIC</button>
+          <label class="command file-command" for="audioInput">AUDIO</label>
+          <input id="audioInput" class="hidden-input" type="file" accept="audio/*" />
           <button id="echoToggle" class="command active">ECHO</button>
           <button id="blackoutToggle" class="command">BLACK</button>
           <button id="freezeToggle" class="command">FREEZE</button>
           <button id="randomize" class="command">RND</button>
+        </div>
+
+        <div class="section particle-tool" aria-label="Particleify generator">
+          <input id="particleText" type="text" value="AV" maxlength="12" aria-label="Particle text" />
+          <button id="textParticle" class="command">TEXT</button>
+          <label class="command file-command" for="imageInput">IMAGE</label>
+          <input id="imageInput" class="hidden-input" type="file" accept="image/*" />
+          <button id="clearParticle" class="command">CLEAR</button>
         </div>
 
         <div class="section sliders">
