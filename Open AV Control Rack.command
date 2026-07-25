@@ -17,5 +17,26 @@ echo "Serving: ${URL}"
 echo "Press Control-C in this window to stop the local preview."
 echo
 
-open "${URL}" >/dev/null 2>&1 || true
-PORT="${PORT}" npm start
+PORT="${PORT}" node server.js &
+server_pid=$!
+
+cleanup() {
+  kill "${server_pid}" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+for _ in {1..50}; do
+  if curl --silent --fail "${URL}" >/dev/null 2>&1; then
+    open "${URL}" >/dev/null 2>&1 || true
+    wait "${server_pid}"
+    exit $?
+  fi
+  if ! kill -0 "${server_pid}" >/dev/null 2>&1; then
+    wait "${server_pid}"
+    exit $?
+  fi
+  sleep 0.1
+done
+
+echo "The local preview did not become ready at ${URL}."
+exit 1

@@ -1,94 +1,138 @@
-# AV Control Rack
+# AV Control Rack / Range Echo
 
-一个纯网页 3D 音频响应视觉原型，也保留本地 OSC 控制台能力。
+一个可独立运行的 Three.js 音频视觉作品，同时保留 Web MIDI 和本地 OSC 控制能力。
 
-当前视觉方向是低成本的 `Range Echo 3D`：Three.js 实例化柱阵、Web Audio FFT、低频扩散波、高频粒子/流星感。线上版本可以直接打开试玩；本地版本额外可以把控制参数通过 OSC 发给 TouchDesigner。
+当前版本以这台 MacBook Pro（Apple M1、8 核 GPU、16GB 内存）作为性能上限：
 
-## 在另一台电脑运行
+- 160×160 GPU 粒子针阵，共 25,600 个核心点。
+- M1 默认档增加 8,000 个氛围/流星点，总量 33,600。
+- 高画质档总量 49,600，低于 65,536 个粒子的硬上限。
+- 中低频从盘面中心向四周生成涟漪。
+- 重低音在随机位置产生不可见落点的冲击反馈。
+- 高频触发最多三条流星，落地后转为盘面冲击。
+- 图片、SVG、文字和音频盘面复用同一个核心粒子池。
 
-准备：
-
-- Git
-- Node.js 18 或更高版本
-
-```bash
-git clone https://github.com/calfnai/AVcontrolRack.git
-cd AVcontrolRack
-npm start
-```
-
-然后打开：
-
-```text
-http://localhost:4173
-```
-
-项目当前没有本地 npm 依赖，因此克隆后不需要先运行 `npm install`。Three.js 已放在 `vendor/three.min.js`，直接打开 `index.html` 或使用 GitHub Pages 都可以加载 3D 舞台。
-
-## 在另一台电脑用 Codex 共同开发
-
-先在另一台电脑安装并登录 GitHub、Codex，然后让 Codex 打开克隆后的 `AVcontrolRack` 文件夹。仓库根目录的 `AGENTS.md` 会向 Codex 提供项目结构、开发约束和验证要求。
-
-首次使用：
-
-```bash
-git clone https://github.com/calfnai/AVcontrolRack.git
-cd AVcontrolRack
-```
-
-以后每次换电脑继续开发前：
-
-```bash
-git pull --rebase
-```
-
-开发完成后，让 Codex 提交并推送到 GitHub；另一台电脑再次执行 `git pull --rebase` 就能接着开发。GitHub 同步代码和 `AGENTS.md`，但不会同步两个 Codex 对话的聊天记录，因此重要决定应写进仓库文档。
-
-## 在线版本
+## 在线试玩
 
 ```text
 https://calfnai.github.io/AVcontrolRack/
 ```
 
-在线版本可用于 3D 视觉、麦克风和 MIDI 测试。浏览器网页不能直接发送 UDP OSC 到本地 TouchDesigner；需要 OSC 时请使用下面的本地启动方式。
+GitHub Pages 使用 HTTPS，可以在用户点击 `MIC` 后请求麦克风权限。浏览器网页不能直接发送 UDP OSC；需要 OSC 时使用本地启动方式。
 
-## 启动
+## 本地启动
 
-macOS 本机试玩可以直接双击：
-
-```text
-Open AV Control Rack.command
-```
-
-它会启动本地服务并打开：
-
-```text
-http://127.0.0.1:4173
-```
-
-只要这个 Terminal 窗口还开着，本地预览就不会出现 `127.0.0.1 refused to connect`。要停止本地预览，在那个 Terminal 窗口按 `Control-C`。
-
-命令行启动：
+需要 Node.js 18 或更高版本。项目没有第三方 npm 依赖。
 
 ```bash
+git clone https://github.com/calfnai/AVcontrolRack.git
+cd AVcontrolRack
 npm start
 ```
 
 打开：
 
 ```text
-http://localhost:4173
+http://127.0.0.1:4173
 ```
 
-## TouchDesigner 连接
+macOS 也可以双击 `Open AV Control Rack.command`。只要对应的 Terminal 窗口仍然运行，本地地址就不会出现 `127.0.0.1 refused to connect`；停止服务请按 `Control-C`。
 
-默认 OSC 输出到：
+直接打开 `index.html` 仍可观看画面、导入图片和播放本地音频文件。麦克风是否允许取决于浏览器对 `file://` 的安全策略，因此麦克风测试优先使用 localhost 或 GitHub Pages。
+
+## 在另一台电脑继续
+
+```bash
+git clone https://github.com/calfnai/AVcontrolRack.git
+cd AVcontrolRack
+npm start
+```
+
+以后换电脑继续开发前先运行 `git pull --rebase`。GitHub 同步代码和仓库内的开发说明，不同步两个 Codex 对话的聊天记录。
+
+## 操作
+
+首屏是全屏视觉作品。右上角 `CONTROL` 打开控制抽屉：
+
+- `MIC`：请求麦克风。
+- `AUDIO`：选择本地音频文件。
+- `ECHO`：启用或暂停中低频扩散波。
+- `BLACK`：黑场。
+- `FREEZE`：冻结视觉状态。
+- `RND`：在受控范围内随机化参数。
+- `A–H`：八组紫粉色系场景。
+
+舞台左侧可以切换：
+
+- `RANGE FIELD`：160×160 音频盘面。
+- `PARTICLE FORM`：文字、图片或 SVG 粒子形态。
+
+Particle Form 效果：
+
+- `MORPH`：保持目标形态。
+- `SCATTER`：沿粒子方向散开。
+- `VORTEX`：围绕形态中心旋转。
+- `PULSE`：整体呼吸。
+- `WAVE`：形态表面行波。
+
+## M1 性能档位
+
+页面启动后会采样约三秒帧时间：
+
+| 档位 | 核心点 | 氛围点 | DPR 上限 | 辉光 |
+| --- | ---: | ---: | ---: | --- |
+| STABLE | 25,600 | 3,000 | 1.0 | 关闭 |
+| M1 | 25,600 | 8,000 | 1.25 | 半分辨率单次合成 |
+| HIGH | 25,600 | 24,000 | 1.25 | 半分辨率单次合成 |
+
+连续两秒低于 52 FPS 时会逐级降档；不会自动升档。HIGH 只能由用户手动选择。
+
+控制抽屉会显示 FPS、P95 帧时间、当前粒子总数和 DPR。开发测试还可从控制台调用：
+
+```js
+window.__AV_TEST__.metrics()
+window.__AV_TEST__.stress(true)
+window.__AV_TEST__.stress(false)
+```
+
+## 音频映射
+
+实时 FFT 的主要响应范围是 0–3.5 kHz：
+
+```text
+20–55 Hz      -> 重低音候选
+55–165 Hz     -> 低频力量
+165–620 Hz    -> 中心涟漪主触发
+620–3500 Hz   -> 盘面纹理和形变
+3500–9500 Hz  -> 流星和空气粒子
+```
+
+歌曲没有明显重低音时，会根据最近数秒的低频动态范围选择更明显的低频瞬态作为替代冲击。BPM 使用中低频触发间隔的中位数估计，只控制旋转基准速度。
+
+麦克风失败时状态栏会显示：
+
+```text
+MIC DENIED      浏览器或系统拒绝权限
+NO MIC          没有输入设备
+MIC BUSY        输入设备正被占用
+MIC NEEDS HTTPS 当前页面环境不允许调用麦克风
+```
+
+## TouchDesigner / OSC
+
+本地 Node 服务默认把参数发送到：
 
 ```text
 127.0.0.1:7000
 ```
 
-在 TouchDesigner 里添加 `OSC In CHOP` 或 `OSC In DAT`，端口设为 `7000`。控制台会发送这些地址：
+可用环境变量：
+
+```bash
+OSC_HOST=127.0.0.1 OSC_PORT=7000 PORT=4173 npm start
+```
+
+OSC 地址保持兼容：
 
 ```text
 /av/scene
@@ -100,73 +144,14 @@ http://localhost:4173
 /av/audioGain
 /av/hue
 /av/intensity
+/av/echo
 /av/blackout
 /av/freeze
 ```
 
-如果要改 OSC 目标：
-
-```bash
-OSC_HOST=127.0.0.1 OSC_PORT=7000 PORT=4173 npm start
-```
-
-## MIDI 映射
-
-浏览器支持 Web MIDI 时，控制台会自动尝试连接 MIDI 控制器。
+MIDI 映射保持不变：
 
 ```text
-CC 1  -> speed
-CC 2  -> density
-CC 3  -> feedback
-CC 4  -> warp
-CC 5  -> size
-CC 6  -> audioGain
-CC 7  -> hue
-CC 8  -> intensity
-Note 36-43 -> scene A-H
+CC 1-8       -> speed, density, feedback, warp, size, audioGain, hue, intensity
+Note 36-43   -> scene A-H
 ```
-
-## 音频
-
-点击 `MIC` 后，浏览器会请求麦克风权限。音频分析会驱动画面里的 bass / mid / high，并显示在左下角读数里。
-
-如果 `MIC` 失败，状态栏会显示具体原因：
-
-```text
-MIC DENIED      浏览器或系统拒绝了麦克风权限
-NO MIC          没有可用输入设备
-MIC BUSY        麦克风被系统或其他应用占用
-MIC NEEDS HTTPS 当前浏览器环境不允许调用麦克风
-```
-
-本地调试优先使用 Chrome / Safari 打开 GitHub Pages 或 `http://localhost:<port>`。如果浏览器环境不允许麦克风，可以点 `AUDIO` 选择本地音频文件，页面会用该音频文件驱动同一套 bass / mid / high 分析。
-
-当前 3D 映射：
-
-```text
-bass / low-mid -> 中心最强的柱阵冲击，并向四周形成空间涟漪
-sub-bass       -> 随机落点的大雨滴/炸弹冲击波
-mid            -> 0-3.5kHz 主响应，补充柱阵波形和扭曲
-high           -> 高频粒子、亮边和闪烁
-BPM            -> 自动估计节拍，控制盘面旋转基准速度
-```
-
-不打开麦克风时，页面会用一组轻微的 idle 信号保持动画可看。
-
-视觉行为目标：
-
-- 中低频不是沿时间轴自己滚动，而是作为画面中心的实时力量源向外推开。
-- 重低音优先触发随机落点冲击；如果歌曲缺少明显重低音，会用更明显的低频/中低频瞬态作为弱替代。
-- 柱高不会被压在近距离虚拟天花板上；相机和增益会给强低频留出更远的垂直空间。
-
-## Particleify
-
-控制台提供一个轻量版 Particleify 面板：
-
-```text
-TEXT  -> 把输入框里的文字转成 3D 柱阵轮廓
-IMAGE -> 上传图片，用图片亮度生成 3D 柱阵轮廓
-CLEAR -> 回到完整音域网格
-```
-
-Particleify 轮廓只是视觉 mask；音频、场景、速度、密度、反馈、扭曲、尺寸、色相和强度滑杆仍然会继续影响 3D 舞台。
