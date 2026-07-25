@@ -18,6 +18,12 @@
 https://calfnai.github.io/AVcontrolRack/
 ```
 
+设计与审美说明：
+
+```text
+https://calfnai.github.io/AVcontrolRack/design.html
+```
+
 GitHub Pages 使用 HTTPS，可以在用户点击 `MIC` 后请求麦克风权限。浏览器网页不能直接发送 UDP OSC；需要 OSC 时使用本地启动方式。
 
 ## 本地启动
