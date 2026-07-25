@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check": "node --check app.js && node --check server.js",
     "start": "node server.js"
   }
 }
