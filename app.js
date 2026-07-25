@@ -23,6 +23,10 @@ const state = {
   bass: 0,
   mid: 0,
   high: 0,
+  subBass: 0,
+  lowMid: 0,
+  beat: 0,
+  bpm: 0,
 };
 
 const sceneNames = "ABCDEFGH".split("");
@@ -35,6 +39,7 @@ const sceneReadout = document.querySelector("#sceneReadout");
 const bassReadout = document.querySelector("#bassReadout");
 const midReadout = document.querySelector("#midReadout");
 const highReadout = document.querySelector("#highReadout");
+const bpmReadout = document.querySelector("#bpmReadout");
 const modeLabel = document.querySelector("#modeLabel");
 const audioToggle = document.querySelector("#audioToggle");
 const audioInput = document.querySelector("#audioInput");
@@ -58,14 +63,14 @@ const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 120);
 camera.position.set(0, 17, 24);
 camera.lookAt(0, 0, 0);
 
-const gridSize = 88;
+const gridSize = 112;
 const gridCount = gridSize * gridSize;
-const spacing = 0.28;
+const spacing = 0.22;
 const halfGrid = (gridSize - 1) * spacing * 0.5;
 const dummy = new THREE.Object3D();
 const color = new THREE.Color();
 const meterColor = new THREE.Color();
-const columnGeometry = new THREE.BoxGeometry(0.13, 1, 0.13);
+const columnGeometry = new THREE.BoxGeometry(0.105, 1, 0.105);
 const columnMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   metalness: 0.12,
@@ -100,11 +105,27 @@ const ringMaterial = new THREE.MeshBasicMaterial({
   depthWrite: false,
 });
 const rings = Array.from({ length: 7 }, (_, index) => {
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.95 + index * 1.2, 1.02 + index * 1.2, 128), ringMaterial.clone());
+  const baseRadius = 0.95 + index * 1.2;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(baseRadius, baseRadius + 0.07, 128), ringMaterial.clone());
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.025 + index * 0.01;
+  ring.userData.baseRadius = baseRadius;
   scene.add(ring);
   return ring;
+});
+
+const bombMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const bombs = Array.from({ length: 10 }, () => {
+  const bomb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 12), bombMaterial.clone());
+  bomb.visible = false;
+  scene.add(bomb);
+  return bomb;
 });
 
 const particleCount = 420;
@@ -152,6 +173,13 @@ let time = 0;
 let last = performance.now();
 let pointerX = 0.5;
 let pointerY = 0.5;
+let rotationPhase = 0;
+let beatHold = 0;
+let lastBeatAt = 0;
+let lastBombAt = 0;
+let previousBeatEnergy = 0;
+const beatIntervals = [];
+const impacts = [];
 const particleCanvas = document.createElement("canvas");
 const particleCtx = particleCanvas.getContext("2d", { willReadFrequently: true });
 const particleSize = 128;
@@ -234,26 +262,77 @@ function band(from, to) {
   return clamp((sum / Math.max(1, to - from) / 255) * state.audioGain * 1.45);
 }
 
+function hzBand(fromHz, toHz) {
+  if (!frequencyData || !audioContext) return 0;
+  const nyquist = audioContext.sampleRate / 2;
+  const from = Math.max(1, Math.floor((fromHz / nyquist) * frequencyData.length));
+  const to = Math.max(from + 1, Math.ceil((toHz / nyquist) * frequencyData.length));
+  return band(from, Math.min(frequencyData.length, to));
+}
+
+function idleSignal(rate, offset, amount = 0.08) {
+  return amount + Math.sin(time * rate + offset) * amount * 0.42;
+}
+
 function updateAudio() {
+  const nowSeconds = performance.now() / 1000;
   let bass = 0;
   let mid = 0;
   let high = 0;
+  let subBass = 0;
+  let lowMid = 0;
   if (analyser && frequencyData) {
     analyser.getByteFrequencyData(frequencyData);
-    bass = band(2, 12);
-    mid = band(12, 54);
-    high = band(54, 150);
+    subBass = hzBand(20, 58);
+    bass = hzBand(58, 140);
+    lowMid = hzBand(140, 420);
+    mid = hzBand(420, 3500);
+    high = hzBand(3500, 9500);
   } else {
-    bass = 0.24 + Math.sin(time * 1.35) * 0.08;
-    mid = 0.2 + Math.sin(time * 0.93 + 2) * 0.07;
-    high = 0.12 + Math.sin(time * 1.9 + 4) * 0.04;
+    subBass = idleSignal(0.43, 1, 0.035);
+    bass = idleSignal(1.35, 0, 0.22);
+    lowMid = idleSignal(0.86, 2.2, 0.18);
+    mid = idleSignal(0.93, 2, 0.15);
+    high = idleSignal(1.9, 4, 0.1);
   }
-  state.bass = state.bass * 0.82 + bass * 0.18;
-  state.mid = state.mid * 0.85 + mid * 0.15;
+
+  state.subBass = state.subBass * 0.76 + subBass * 0.24;
+  state.bass = state.bass * 0.8 + bass * 0.2;
+  state.lowMid = state.lowMid * 0.82 + lowMid * 0.18;
+  state.mid = state.mid * 0.86 + mid * 0.14;
   state.high = state.high * 0.88 + high * 0.12;
+
+  const beatEnergy = state.subBass * 0.35 + state.bass * 0.42 + state.lowMid * 0.23;
+  const jump = beatEnergy - previousBeatEnergy;
+  const beatThreshold = 0.09 + (1 - state.audioGain) * 0.08;
+  if (jump > beatThreshold && beatEnergy > 0.22 && nowSeconds - lastBeatAt > 0.24) {
+    if (lastBeatAt) {
+      const interval = nowSeconds - lastBeatAt;
+      if (interval > 0.28 && interval < 1.5) {
+        beatIntervals.push(interval);
+        if (beatIntervals.length > 10) beatIntervals.shift();
+        const average = beatIntervals.reduce((sum, item) => sum + item, 0) / beatIntervals.length;
+        state.bpm = Math.round(60 / average);
+      }
+    }
+    lastBeatAt = nowSeconds;
+    beatHold = 1;
+  }
+  beatHold *= 0.9;
+  state.beat = state.beat * 0.72 + beatHold * 0.28;
+  previousBeatEnergy = previousBeatEnergy * 0.72 + beatEnergy * 0.28;
+
+  const bombEnergy = Math.max(state.subBass * 1.15, state.subBass < 0.08 ? beatEnergy * 0.72 : 0);
+  const bombThreshold = state.subBass > 0.08 ? 0.38 : 0.46;
+  if (bombEnergy > bombThreshold && nowSeconds - lastBombAt > 0.38) {
+    spawnImpact(bombEnergy, state.subBass > 0.08);
+    lastBombAt = nowSeconds;
+  }
+
   bassReadout.textContent = state.bass.toFixed(2);
   midReadout.textContent = state.mid.toFixed(2);
   highReadout.textContent = state.high.toFixed(2);
+  bpmReadout.textContent = state.bpm ? String(state.bpm) : "--";
 }
 
 async function startAudio() {
@@ -338,16 +417,59 @@ function sampleParticleMap(x, z, start, activeSize) {
   return state.particleMap[py * particleSize + px] || 0;
 }
 
+function spawnImpact(strength, hasSubBass) {
+  const radius = halfGrid * 0.78 * Math.sqrt(Math.random());
+  const angle = Math.random() * Math.PI * 2;
+  impacts.push({
+    x: Math.cos(angle) * radius,
+    z: Math.sin(angle) * radius,
+    age: 0,
+    life: hasSubBass ? 1.8 : 1.25,
+    strength: clamp(strength, 0, 1),
+    hue: (state.hue + Math.random() * 0.24 + (hasSubBass ? 0.06 : 0.52)) % 1,
+    reverse: Math.random() > 0.45,
+  });
+  if (impacts.length > bombs.length) impacts.shift();
+}
+
+function updateImpacts(delta) {
+  for (let i = impacts.length - 1; i >= 0; i -= 1) {
+    impacts[i].age += delta;
+    if (impacts[i].age > impacts[i].life) impacts.splice(i, 1);
+  }
+}
+
+function impactContribution(gx, gz) {
+  let lift = 0;
+  let flash = 0;
+  for (const impact of impacts) {
+    const p = clamp(impact.age / impact.life);
+    const dx = gx - impact.x;
+    const dz = gz - impact.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    const radius = impact.reverse ? (1 - p) * 10.5 + 0.6 : p * 12 + 0.4;
+    const shell = Math.exp(-Math.pow(d - radius, 2) * 1.45);
+    const core = Math.exp(-d * 0.55) * Math.max(0, 1 - p * 2.4);
+    const amp = impact.strength * Math.pow(1 - p, 0.72);
+    lift += (shell * 2.6 + core * 4.2) * amp;
+    flash += shell * amp;
+  }
+  return { lift, flash };
+}
+
 function frequencyAt(column, distance) {
   if (!frequencyData) return 0.2 + Math.sin(distance * 0.42 - time * 1.4) * 0.14;
   const normalized = column / (gridSize - 1);
   const curve = Math.pow(normalized, 1.7);
-  const index = Math.min(frequencyData.length - 1, Math.floor(curve * frequencyData.length * 0.82) + 2);
+  const maxIndex = audioContext
+    ? Math.min(frequencyData.length - 1, Math.ceil((3500 / (audioContext.sampleRate / 2)) * frequencyData.length))
+    : Math.floor(frequencyData.length * 0.18);
+  const index = Math.min(maxIndex, Math.floor(curve * maxIndex) + 2);
   return frequencyData[index] / 255;
 }
 
 function updateColumns() {
-  const activeSize = Math.floor(44 + state.density * 44);
+  const activeSize = Math.floor(56 + state.density * 56);
   const start = Math.floor((gridSize - activeSize) / 2);
   const end = start + activeSize;
   const baseHue = (state.hue + state.scene * 0.065) % 1;
@@ -378,16 +500,23 @@ function updateColumns() {
         continue;
       }
       const freq = frequencyAt(x, distance);
-      const ripple = Math.sin(distance * (0.38 + state.warp * 0.5) - time * (2.5 + state.speed * 4) + state.scene);
+      const centerFalloff = Math.exp(-distance * (0.045 + state.warp * 0.02));
+      const lowMidForce = state.bass * 0.64 + state.lowMid * 0.92 + state.beat * 0.34;
+      const centerRipple = Math.max(0, Math.sin(distance * (0.46 + state.warp * 0.18) - lowMidForce * 4.8 + state.scene * 0.3));
       const cross = Math.sin((gx * Math.cos(time * 0.12) + gz * Math.sin(time * 0.12)) * 1.1 + time);
-      const energy = clamp(
-        freq * 0.9 +
-          state.bass * (0.55 + ripple * 0.35) * echo +
-          state.mid * Math.abs(cross) * 0.5 +
-          state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.35,
-      );
+      const impact = impactContribution(gx, gz);
+      const energy =
+        freq * 0.55 +
+        lowMidForce * centerFalloff * 1.25 * echo +
+        centerRipple * lowMidForce * 0.75 * echo +
+        state.mid * Math.abs(cross) * 0.3 +
+        state.high * Math.max(0, Math.sin(angle * 9 + time * 5)) * 0.24 +
+        impact.lift * 0.26;
       const formLift = state.particleMap ? mask * (0.7 + state.intensity * 2.6) : 0;
-      const height = 0.08 + formLift + Math.pow(energy * (0.35 + mask * 0.65), 1.35) * (0.85 + state.size * 6.4);
+      const height =
+        0.07 +
+        formLift +
+        Math.pow(Math.max(0, energy) * (0.35 + mask * 0.65), 1.12) * (0.95 + state.size * 7.8);
       const y = height * 0.5;
       const lean = state.warp * state.mid * 0.12;
 
@@ -400,7 +529,7 @@ function updateColumns() {
       color.setHSL(
         (baseHue + energy * 0.18 + mask * 0.16 + distance * 0.004 + angle / (Math.PI * 8) + z * 0.0018) % 1,
         0.7 + state.high * 0.22,
-        0.25 + state.intensity * 0.32 + energy * 0.26 + mask * 0.2,
+        0.22 + state.intensity * 0.28 + Math.max(0, energy) * 0.18 + impact.flash * 0.3 + mask * 0.18,
       );
       columns.setColorAt(index, color);
       visible += 1;
@@ -419,11 +548,50 @@ function updateColumns() {
 
 function updateRings() {
   rings.forEach((ring, index) => {
-    const phase = (time * (0.22 + state.speed * 0.52) + index / rings.length) % 1;
-    const scale = 0.8 + phase * (6.8 + state.bass * 4.8);
-    ring.scale.setScalar(scale);
-    ring.material.opacity = state.echo && !state.blackout ? Math.max(0, (1 - phase) * state.bass * (0.18 + state.feedback * 0.42)) : 0;
-    ring.material.color.setHSL((state.hue + 0.48 + index * 0.02) % 1, 0.88, 0.58);
+    const baseRadius = ring.userData.baseRadius || 1;
+    if (index < 3) {
+      const lowMidForce = state.bass * 0.52 + state.lowMid * 0.92 + state.beat * 0.42;
+      const radius = 1.8 + index * 2.1 + lowMidForce * (3.2 + index * 1.3);
+      ring.position.set(0, 0.028 + index * 0.01, 0);
+      ring.scale.setScalar(radius / baseRadius);
+      ring.rotation.z = rotationPhase;
+      ring.material.opacity = state.echo && !state.blackout ? lowMidForce * (0.08 + state.feedback * 0.16) * (1 - index * 0.18) : 0;
+      ring.material.color.setHSL((state.hue + 0.48 + index * 0.035) % 1, 0.88, 0.58);
+      return;
+    }
+
+    const impact = impacts[index - 3];
+    if (!impact || state.blackout) {
+      ring.material.opacity = 0;
+      return;
+    }
+
+    const p = clamp(impact.age / impact.life);
+    const radius = impact.reverse ? (1 - p) * 10.5 + 0.8 : p * 12 + 0.8;
+    ring.position.set(impact.x, 0.06 + index * 0.005, impact.z);
+    ring.scale.setScalar(radius / baseRadius);
+    ring.rotation.z = rotationPhase;
+    ring.material.opacity = Math.pow(1 - p, 0.7) * impact.strength * (0.18 + state.feedback * 0.34);
+    ring.material.color.setHSL(impact.hue, 0.92, 0.62);
+  });
+}
+
+function updateBombs() {
+  bombs.forEach((bomb, index) => {
+    const impact = impacts[index];
+    if (!impact || state.blackout) {
+      bomb.visible = false;
+      bomb.material.opacity = 0;
+      return;
+    }
+
+    const fall = clamp(impact.age / Math.min(0.32, impact.life * 0.35));
+    const afterGlow = clamp(1 - (impact.age - 0.32) / Math.max(0.1, impact.life - 0.32));
+    bomb.visible = true;
+    bomb.position.set(impact.x, 6.5 * (1 - fall) + 0.28, impact.z);
+    bomb.scale.setScalar(0.9 + impact.strength * 2.8 + Math.max(0, 1 - fall) * 1.6);
+    bomb.material.opacity = fall < 1 ? 0.72 : afterGlow * 0.28;
+    bomb.material.color.setHSL(impact.hue, 0.95, 0.68);
   });
 }
 
@@ -461,10 +629,24 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 
+function updateRotation(delta) {
+  const bpm = state.bpm || 72;
+  const beatTurnsPerSecond = bpm / 60;
+  const manualScale = 0.08 + state.speed * 0.34;
+  rotationPhase += delta * beatTurnsPerSecond * manualScale;
+  columns.rotation.y = rotationPhase;
+  particles.rotation.y = rotationPhase * 0.72;
+  floor.rotation.z = rotationPhase;
+}
+
 function draw(now) {
   const delta = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (!state.freeze) time += delta * (0.2 + state.speed * 2.2);
+  if (!state.freeze) {
+    time += delta * (0.12 + state.speed * 1.35);
+    updateRotation(delta);
+    updateImpacts(delta);
+  }
   updateAudio();
 
   renderer.setClearColor(state.blackout ? 0x000000 : 0x050607, 1);
@@ -475,16 +657,21 @@ function draw(now) {
   if (!state.blackout) {
     updateColumns();
     updateRings();
+    updateBombs();
     updateParticles(delta);
     const orbit = (pointerX - 0.5) * 0.34;
-    camera.position.x = Math.sin(orbit) * 16;
-    camera.position.y = 15 + (pointerY - 0.5) * 4 + state.bass * 1.5;
-    camera.position.z = 22 + Math.cos(orbit) * 2;
-    camera.lookAt(0, 1.1 + state.mid * 1.8, 0);
+    camera.position.x = Math.sin(orbit) * 18;
+    camera.position.y = 21 + (pointerY - 0.5) * 4 + state.bass * 2;
+    camera.position.z = 31 + Math.cos(orbit) * 2.5;
+    camera.lookAt(0, 2.4 + state.mid * 2.2, 0);
     floorMaterial.opacity = 0.62 + state.feedback * 0.26;
   } else {
     rings.forEach((ring) => {
       ring.material.opacity = 0;
+    });
+    bombs.forEach((bomb) => {
+      bomb.visible = false;
+      bomb.material.opacity = 0;
     });
   }
 
