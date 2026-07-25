@@ -21,6 +21,17 @@
   const FIELD_SPACING = 0.27;
   const FIELD_HALF = ((GRID_SIZE - 1) * FIELD_SPACING) / 2;
   const FORM_CANVAS_SIZE = 160;
+  const MOTION_TUNING = Object.freeze({
+    rippleCooldown: 0.14,
+    rippleDensityFloor: 0.72,
+    impactCooldown: 0.34,
+    impactDensityFloor: 2.15,
+    meteorCooldown: 0.42,
+    meteorDensityFloor: 1.35,
+    idleRippleInterval: 1.45,
+    idleImpactInterval: 4.4,
+    idleMeteorInterval: 6.2,
+  });
 
   const QUALITY_PROFILES = {
     stable: { label: "STABLE", atmosphere: 3000, pixelRatio: 1, glow: false },
@@ -145,6 +156,7 @@
   const impactUniforms = Array.from({ length: IMPACT_SLOTS }, () => new THREE.Vector4(0, 0, 2, 0));
   const meteorUniforms = Array.from({ length: METEOR_SLOTS }, () => new THREE.Vector4(0, 0, 2, 0));
   const bandUniforms = Array.from({ length: 8 }, () => 0);
+  const rawBandValues = Array.from({ length: 8 }, () => 0);
 
   const coreUniforms = {
     uTime: { value: 0 },
@@ -222,7 +234,24 @@
       float idle = 0.14
         + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.09
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.05;
-      float audioLift = pow(max(0.0, bandEnergy), 1.22) * (1.0 + uIntensity * 4.8);
+      float angle = atan(field.z, field.x);
+      float travelingBand = (
+        sin(
+          distanceFromCenter * (0.48 + aBand * 0.035)
+          - uTime * (1.15 + uMid * 2.7)
+          + aBand * 0.82
+        ) * 0.5 + 0.5
+      ) * bandEnergy;
+      float crossCurrent = sin(
+        field.x * 0.34
+        + field.z * 0.27
+        - uTime * (0.74 + uHigh * 3.6)
+        + aSeed * 4.0
+      ) * (uMid * 0.24 + uHigh * 0.16);
+      float audioLift =
+        pow(max(0.0, bandEnergy), 1.14) * (1.0 + uIntensity * 4.6)
+        + travelingBand * (0.55 + uIntensity * 1.2)
+        + crossCurrent;
       float centerForce = exp(-distanceFromCenter * 0.19) * (uBass * 5.2 + uMid * 1.7);
       float rippleLift = 0.0;
       float rippleFlash = 0.0;
@@ -261,7 +290,10 @@
       field.xz += vec2(
         sin(field.z * 0.3 + uTime + aSeed * 4.0),
         cos(field.x * 0.27 - uTime + aSeed * 3.0)
-      ) * uWarp * uMid * 0.1;
+      ) * uWarp * (uMid * 0.16 + uHigh * 0.07);
+      field.xz += vec2(cos(angle), sin(angle))
+        * sin(angle * 6.0 - uTime * (0.9 + uHigh * 2.0) + distanceFromCenter * 0.22)
+        * uWarp * (uMid + uHigh) * 0.075;
 
       vec3 form = aTarget;
       float effect = uEffectAmount;
@@ -385,6 +417,8 @@
 
   const atmosphereUniforms = {
     uTime: { value: 0 },
+    uBass: { value: 0 },
+    uMid: { value: 0 },
     uHigh: { value: 0 },
     uIntensity: { value: state.intensity },
     uHue: { value: state.hue },
@@ -398,12 +432,20 @@
     attribute float aKind;
     attribute float aLane;
     uniform float uTime;
+    uniform float uBass;
+    uniform float uMid;
     uniform float uHigh;
     uniform float uIntensity;
     uniform float uPointScale;
     uniform vec4 uMeteors[3];
     varying float vAlpha;
     varying float vHeat;
+
+    mat2 rotate2d(float angle) {
+      float c = cos(angle);
+      float s = sin(angle);
+      return mat2(c, -s, s, c);
+    }
 
     vec4 meteorForLane(float lane) {
       if (lane < 0.5) return uMeteors[0];
@@ -433,11 +475,16 @@
           transformed = vec3(0.0, -200.0, 0.0);
         }
       } else {
-        float drift = uTime * (0.12 + aSeed * 0.14);
-        transformed.y = mod(position.y + drift * (1.0 + uHigh * 2.0), 17.0) - 1.0;
-        transformed.x += sin(drift + aSeed * 23.0) * 0.8;
-        transformed.z += cos(drift * 0.7 + aSeed * 19.0) * 0.7;
-        vAlpha = (0.08 + uHigh * 0.22) * (0.35 + aSeed * 0.65);
+        float drift = uTime * (0.18 + aSeed * 0.2 + uHigh * 0.58);
+        float swirl = uTime * (0.008 + uMid * 0.052) * (aSeed - 0.5);
+        transformed.xz = rotate2d(swirl) * transformed.xz;
+        transformed.y = mod(
+          position.y + drift * (1.0 + uBass * 1.2 + uHigh * 2.6),
+          17.0
+        ) - 1.0;
+        transformed.x += sin(drift * 1.4 + aSeed * 23.0) * (0.8 + uMid * 1.6);
+        transformed.z += cos(drift + aSeed * 19.0) * (0.7 + uHigh * 1.4);
+        vAlpha = (0.1 + uHigh * 0.34 + uMid * 0.08) * (0.35 + aSeed * 0.65);
       }
 
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
@@ -588,6 +635,26 @@
   let rippleCursor = 0;
   let impactCursor = 0;
   let meteorCursor = 0;
+  const eventCounters = {
+    ripples: 0,
+    impacts: 0,
+    meteors: 0,
+    densityFloorRipples: 0,
+    densityFloorImpacts: 0,
+    densityFloorMeteors: 0,
+  };
+  const motionDebug = {
+    rawLowMid: 0,
+    rawSubBass: 0,
+    rawHigh: 0,
+    lowFlux: 0,
+    subFlux: 0,
+    highFlux: 0,
+    rippleThreshold: 0,
+    impactThreshold: 0,
+    meteorThreshold: 0,
+    audible: false,
+  };
 
   let audioContext;
   let analyser;
@@ -596,6 +663,7 @@
   let microphoneStream;
   let audioElement;
   let audioObjectUrl;
+  let testBandValues = null;
   let pointerX = 0.5;
   let pointerY = 0.48;
   let time = 0;
@@ -604,18 +672,22 @@
   let lastRippleAt = -10;
   let lastImpactAt = -10;
   let lastMeteorAt = -10;
-  let previousLowMid = 0;
-  let previousSubBass = 0;
-  let previousHigh = 0;
+  let previousRawLowMid = 0;
+  let previousRawSubBass = 0;
+  let previousRawHigh = 0;
   let rotation = 0;
   let rotationTarget = 0;
   const beatIntervals = [];
-  const energyHistory = [];
+  const lowMidHistory = [];
+  const subBassHistory = [];
+  const highHistory = [];
   const frameTimes = [];
   let statsUpdatedAt = 0;
   let calibrationStartedAt = performance.now();
   let lowFpsDuration = 0;
   let idlePulseAt = -10;
+  let idleImpactAt = -10;
+  let idleMeteorAt = -10;
 
   function configureQuality(profileName) {
     const profile = QUALITY_PROFILES[profileName] || QUALITY_PROFILES.m1;
@@ -817,9 +889,10 @@
     audioElement.crossOrigin = "anonymous";
     const context = ensureAnalyser().context;
     await connectAudioNode(context.createMediaElementSource(audioElement), true);
-    await audioElement.play();
+    const playback = audioElement.play();
     setStatus(dom.audioStatus, "FILE LIVE", true);
     dom.audioToggle.classList.remove("active");
+    await playback;
   }
 
   function bandEnergy(fromHz, toHz) {
@@ -835,7 +908,20 @@
     return clamp((sum / Math.max(1, end - start) / 255) * state.audioGain * 1.55);
   }
 
-  function spawnRipple(strength = 0.6) {
+  function channelStats(history, fallback = 0.03) {
+    if (!history.length) return { mean: fallback, deviation: fallback * 0.35 };
+    const mean = history.reduce((sum, value) => sum + value, 0) / history.length;
+    const variance =
+      history.reduce((sum, value) => sum + (value - mean) ** 2, 0) / history.length;
+    return { mean, deviation: Math.sqrt(variance) };
+  }
+
+  function recordChannel(history, value) {
+    history.push(value);
+    if (history.length > 150) history.shift();
+  }
+
+  function spawnRipple(strength = 0.6, source = "audio") {
     const pulse = {
       age: 0,
       life: 1.75 + state.feedback * 1.05,
@@ -843,9 +929,11 @@
     };
     if (ripples.length < RIPPLE_SLOTS) ripples.push(pulse);
     else ripples[rippleCursor++ % RIPPLE_SLOTS] = pulse;
+    eventCounters.ripples += 1;
+    if (source === "density-floor") eventCounters.densityFloorRipples += 1;
   }
 
-  function spawnImpact(strength = 0.75, x, z) {
+  function spawnImpact(strength = 0.75, x, z, source = "audio") {
     const radius = FIELD_HALF * 0.82 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
     const impact = {
@@ -857,9 +945,11 @@
     };
     if (impacts.length < IMPACT_SLOTS) impacts.push(impact);
     else impacts[impactCursor++ % IMPACT_SLOTS] = impact;
+    eventCounters.impacts += 1;
+    if (source === "density-floor") eventCounters.densityFloorImpacts += 1;
   }
 
-  function spawnMeteor(strength = 0.72) {
+  function spawnMeteor(strength = 0.72, source = "audio") {
     const slot = meteors[meteorCursor++ % METEOR_SLOTS];
     const radius = FIELD_HALF * 0.72 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
@@ -869,6 +959,8 @@
     slot.x = Math.cos(angle) * radius;
     slot.z = Math.sin(angle) * radius;
     slot.strength = clamp(strength, 0.25, 1);
+    eventCounters.meteors += 1;
+    if (source === "density-floor") eventCounters.densityFloorMeteors += 1;
   }
 
   function updateAudio(nowSeconds) {
@@ -882,12 +974,19 @@
       [1180, 2200],
       [2200, 3500],
     ];
-    const live = Boolean(analyser && frequencyData);
+    const analyserLive = Boolean(analyser && frequencyData);
+    const live = analyserLive || Boolean(testBandValues);
 
-    if (live) {
+    if (analyserLive) {
       analyser.getByteFrequencyData(frequencyData);
       ranges.forEach(([from, to], index) => {
-        bandUniforms[index] = bandUniforms[index] * 0.7 + bandEnergy(from, to) * 0.3;
+        rawBandValues[index] = bandEnergy(from, to);
+        bandUniforms[index] = bandUniforms[index] * 0.58 + rawBandValues[index] * 0.42;
+      });
+    } else if (testBandValues) {
+      testBandValues.forEach((value, index) => {
+        rawBandValues[index] = clamp(Number(value) || 0);
+        bandUniforms[index] = bandUniforms[index] * 0.58 + rawBandValues[index] * 0.42;
       });
     } else {
       ranges.forEach((_, index) => {
@@ -895,6 +994,7 @@
           0.045 +
           Math.max(0, Math.sin(time * (0.42 + index * 0.055) - index * 0.74)) *
             (0.025 + (7 - index) * 0.004);
+        rawBandValues[index] = wave;
         bandUniforms[index] = bandUniforms[index] * 0.9 + wave * 0.1;
       });
     }
@@ -903,13 +1003,20 @@
     const bass = bandUniforms[1] * 0.35 + bandUniforms[2] * 0.65;
     const lowMid = bandUniforms[3] * 0.66 + bandUniforms[4] * 0.34;
     const mid = bandUniforms[4] * 0.42 + bandUniforms[5] * 0.38 + bandUniforms[6] * 0.2;
-    const liveHigh = live ? bandEnergy(3500, 9500) : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
+    let liveHigh;
+    if (analyserLive) {
+      liveHigh = bandEnergy(3500, 9500);
+    } else if (testBandValues) {
+      liveHigh = Math.max(testBandValues[7] || 0, (testBandValues[6] || 0) * 0.72);
+    } else {
+      liveHigh = 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
+    }
 
     state.subBass = state.subBass * 0.76 + subBass * 0.24;
     state.bass = state.bass * 0.78 + bass * 0.22;
     state.lowMid = state.lowMid * 0.8 + lowMid * 0.2;
     state.mid = state.mid * 0.84 + mid * 0.16;
-    state.high = state.high * 0.86 + liveHigh * 0.14;
+    state.high = state.high * 0.76 + liveHigh * 0.24;
 
     if (state.syntheticStress) {
       state.subBass = 0.82;
@@ -923,65 +1030,140 @@
     }
 
     const lowMidEnergy = state.bass * 0.65 + state.lowMid * 0.92;
-    const lowJump = lowMidEnergy - previousLowMid;
-    const subJump = state.subBass - previousSubBass;
-    const highJump = state.high - previousHigh;
-    energyHistory.push(lowMidEnergy);
-    if (energyHistory.length > 180) energyHistory.shift();
-    const mean = energyHistory.reduce((sum, value) => sum + value, 0) / energyHistory.length;
-    const variance =
-      energyHistory.reduce((sum, value) => sum + (value - mean) ** 2, 0) / energyHistory.length;
-    const deviation = Math.sqrt(variance);
-    const rippleThreshold = Math.max(0.13, mean + deviation * 0.72);
+    const rawSubBass = rawBandValues[0] * 0.74 + rawBandValues[1] * 0.26;
+    const rawLowMid =
+      rawBandValues[2] * 0.18 + rawBandValues[3] * 0.54 + rawBandValues[4] * 0.28;
+    const rawHigh = Math.max(
+      liveHigh,
+      rawBandValues[6] * 0.28 + rawBandValues[7] * 0.72,
+    );
+    const lowFlux = Math.max(0, rawLowMid - previousRawLowMid);
+    const subFlux = Math.max(0, rawSubBass - previousRawSubBass);
+    const highFlux = Math.max(0, rawHigh - previousRawHigh);
+    const lowStats = channelStats(lowMidHistory, rawLowMid || 0.03);
+    const subStats = channelStats(subBassHistory, rawSubBass || 0.025);
+    const highStats = channelStats(highHistory, rawHigh || 0.018);
+    const rippleThreshold = Math.max(0.035, lowStats.mean + lowStats.deviation * 0.28);
+    const impactThreshold = Math.max(0.032, subStats.mean + subStats.deviation * 0.38);
+    const meteorThreshold = Math.max(0.012, highStats.mean + highStats.deviation * 0.3);
+    const rippleTransient =
+      rawLowMid > rippleThreshold &&
+      lowFlux > Math.max(0.0032, lowStats.deviation * 0.1);
+    const subBassTransient =
+      rawSubBass > impactThreshold &&
+      subFlux > Math.max(0.0035, subStats.deviation * 0.12);
+    const fallbackImpact =
+      !subBassTransient &&
+      rawLowMid > lowStats.mean + lowStats.deviation * 0.62 &&
+      lowFlux > Math.max(0.005, lowStats.deviation * 0.16);
+    const meteorTransient =
+      rawHigh > meteorThreshold &&
+      highFlux > Math.max(0.0018, highStats.deviation * 0.1);
+    const rippleActive = rawLowMid > Math.max(0.024, lowStats.mean * 0.72);
+    const impactActive =
+      Math.max(rawSubBass, rawLowMid * 0.68) >
+      Math.max(0.025, Math.min(subStats.mean, lowStats.mean) * 0.7);
+    const meteorActive = rawHigh > Math.max(0.009, highStats.mean * 0.68);
+    const audible = rawLowMid > 0.012 || rawSubBass > 0.012 || rawHigh > 0.008;
+    const rippleFloor = clamp(
+      MOTION_TUNING.rippleDensityFloor - rawLowMid * 0.18,
+      0.5,
+      MOTION_TUNING.rippleDensityFloor,
+    );
 
-    if (
-      live &&
-      nowSeconds - lastRippleAt > 0.22 &&
-      lowMidEnergy > rippleThreshold &&
-      lowJump > 0.018
-    ) {
-      spawnRipple(clamp(lowMidEnergy * 1.38));
-      if (lastAudioAt > 0) {
-        const interval = nowSeconds - lastAudioAt;
-        if (interval > 0.28 && interval < 1.25) {
-          beatIntervals.push(interval);
-          if (beatIntervals.length > 14) beatIntervals.shift();
-          const sorted = [...beatIntervals].sort((a, b) => a - b);
-          const median = sorted[Math.floor(sorted.length / 2)];
-          const bpm = 60 / median;
-          state.bpm = bpm < 70 ? bpm * 2 : bpm > 170 ? bpm / 2 : bpm;
+    if (live && audible && nowSeconds - lastRippleAt > MOTION_TUNING.rippleCooldown) {
+      const densityFloorHit = rippleActive && nowSeconds - lastRippleAt > rippleFloor;
+      if (rippleTransient || densityFloorHit) {
+        spawnRipple(
+          clamp(0.24 + rawLowMid * 1.35 + lowFlux * 4.2),
+          densityFloorHit && !rippleTransient ? "density-floor" : "audio",
+        );
+        if (rippleTransient) {
+          if (lastAudioAt > 0) {
+            const interval = nowSeconds - lastAudioAt;
+            if (interval > 0.26 && interval < 1.25) {
+              beatIntervals.push(interval);
+              if (beatIntervals.length > 14) beatIntervals.shift();
+              const sorted = [...beatIntervals].sort((a, b) => a - b);
+              const median = sorted[Math.floor(sorted.length / 2)];
+              const bpm = 60 / median;
+              state.bpm = bpm < 70 ? bpm * 2 : bpm > 170 ? bpm / 2 : bpm;
+            }
+          }
+          lastAudioAt = nowSeconds;
         }
+        lastRippleAt = nowSeconds;
       }
-      lastAudioAt = nowSeconds;
-      lastRippleAt = nowSeconds;
     }
 
-    const subBassHit = state.subBass > Math.max(0.2, mean * 0.92) && subJump > 0.026;
-    const fallbackHit =
-      !subBassHit && lowMidEnergy > mean + deviation * 1.35 && lowJump > 0.038;
-    if (live && nowSeconds - lastImpactAt > 0.52 && (subBassHit || fallbackHit)) {
-      spawnImpact(clamp((subBassHit ? state.subBass : lowMidEnergy) * 1.45));
-      lastImpactAt = nowSeconds;
+    if (live && audible && nowSeconds - lastImpactAt > MOTION_TUNING.impactCooldown) {
+      const densityFloorHit =
+        impactActive && nowSeconds - lastImpactAt > MOTION_TUNING.impactDensityFloor;
+      if (subBassTransient || fallbackImpact || densityFloorHit) {
+        const sourceEnergy = subBassTransient ? rawSubBass : rawLowMid * 0.82;
+        spawnImpact(
+          clamp(0.26 + sourceEnergy * 1.55 + Math.max(subFlux, lowFlux) * 3.2),
+          undefined,
+          undefined,
+          densityFloorHit && !subBassTransient && !fallbackImpact
+            ? "density-floor"
+            : "audio",
+        );
+        lastImpactAt = nowSeconds;
+      }
     }
 
-    if (live && nowSeconds - lastMeteorAt > 0.66 && state.high > 0.16 && highJump > 0.018) {
-      spawnMeteor(clamp(state.high * 1.65));
-      lastMeteorAt = nowSeconds;
+    if (live && audible && nowSeconds - lastMeteorAt > MOTION_TUNING.meteorCooldown) {
+      const densityFloorHit =
+        meteorActive && nowSeconds - lastMeteorAt > MOTION_TUNING.meteorDensityFloor;
+      if (meteorTransient || densityFloorHit) {
+        spawnMeteor(
+          clamp(0.28 + rawHigh * 2.45 + highFlux * 5.2),
+          densityFloorHit && !meteorTransient ? "density-floor" : "audio",
+        );
+        lastMeteorAt = nowSeconds;
+      }
     }
 
-    if (!live && nowSeconds - idlePulseAt > 3.2) {
-      spawnRipple(0.3);
-      if (Math.floor(nowSeconds / 7) !== Math.floor(idlePulseAt / 7)) spawnImpact(0.28);
-      idlePulseAt = nowSeconds;
+    if (!live || !audible) {
+      if (nowSeconds - idlePulseAt > MOTION_TUNING.idleRippleInterval) {
+        spawnRipple(0.28, "idle");
+        idlePulseAt = nowSeconds;
+      }
+      if (nowSeconds - idleImpactAt > MOTION_TUNING.idleImpactInterval) {
+        spawnImpact(0.3, undefined, undefined, "idle");
+        idleImpactAt = nowSeconds;
+      }
+      if (nowSeconds - idleMeteorAt > MOTION_TUNING.idleMeteorInterval) {
+        spawnMeteor(0.32, "idle");
+        idleMeteorAt = nowSeconds;
+      }
     }
 
-    previousLowMid = lowMidEnergy;
-    previousSubBass = state.subBass;
-    previousHigh = state.high;
+    recordChannel(lowMidHistory, rawLowMid);
+    recordChannel(subBassHistory, rawSubBass);
+    recordChannel(highHistory, rawHigh);
+    previousRawLowMid = rawLowMid;
+    previousRawSubBass = rawSubBass;
+    previousRawHigh = rawHigh;
+    Object.assign(motionDebug, {
+      rawLowMid,
+      rawSubBass,
+      rawHigh,
+      lowFlux,
+      subFlux,
+      highFlux,
+      rippleThreshold,
+      impactThreshold,
+      meteorThreshold,
+      audible,
+    });
 
     coreUniforms.uBass.value = state.bass;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
+    atmosphereUniforms.uBass.value = state.bass;
+    atmosphereUniforms.uMid.value = state.mid;
     atmosphereUniforms.uHigh.value = state.high;
     dom.bassReadout.textContent = state.bass.toFixed(2);
     dom.midReadout.textContent = state.mid.toFixed(2);
@@ -1364,6 +1546,8 @@
       ripples: ripples.length,
       impacts: impacts.length,
       meteors: meteors.filter((meteor) => meteor.active).length,
+      eventCounters: { ...eventCounters },
+      motion: { ...motionDebug },
       renderer: renderer.info.render,
     }),
     stress: (enabled = true) => {
@@ -1380,6 +1564,23 @@
     ripple: spawnRipple,
     impact: spawnImpact,
     meteor: spawnMeteor,
+    resetCounters: () => {
+      Object.keys(eventCounters).forEach((key) => {
+        eventCounters[key] = 0;
+      });
+      return { ...eventCounters };
+    },
+    feedBands: (values) => {
+      if (values == null) {
+        testBandValues = null;
+        return null;
+      }
+      testBandValues = Array.from({ length: 8 }, (_, index) =>
+        clamp(Number(values[index]) || 0),
+      );
+      return [...testBandValues];
+    },
+    tuning: MOTION_TUNING,
     quality: (name) => configureQuality(name),
     mode: setMode,
     effect: setEffect,
