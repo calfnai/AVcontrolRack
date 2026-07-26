@@ -71,7 +71,7 @@ There is movement even in silence. The idle field is not a screensaver waiting f
 - **C / LIQUID LENS**
 - **D / ORBITAL**
 - **E / AURORA**
-- **F / MONOLITH**
+- **F / STAIR ROUTE** — a compressed memory of the manual stair-walking model: twin stair cores, wrong doors, locked thresholds, and a route that cuts across the field without becoming another slider preset.
 - **G / SOLAR BLOOM**
 - **H / DEEP SPACE**
 

@@ -80,7 +80,7 @@ npm start
 - `BLACK`：黑场。
 - `FREEZE`：冻结视觉状态。
 - `RND`：在受控范围内随机化参数。
-- `A–H`：Range Echo、Silk Current、Liquid Lens、Orbital、Aurora、Monolith、Solar Bloom、Deep Space。A-H 不改写 slider 数值；数值变化使用 `RND` 或手动滑杆。
+- `A–H`：Range Echo、Silk Current、Liquid Lens、Orbital、Aurora、Stair Route、Solar Bloom、Deep Space。A-H 不改写 slider 数值；数值变化使用 `RND` 或手动滑杆。
 
 切换场景时，同一个粒子池会经历收拢、涡旋和重新展开；不会重建场景或增加额外绘制。各场景也使用不同机位、连续环绕、节拍推进和受置信度约束的强拍硬切。
 

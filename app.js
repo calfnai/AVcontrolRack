@@ -106,12 +106,12 @@
       lookAt: [-0.6, 1.8, 0.2],
     },
     {
-      name: "MONOLITH",
-      hueOffset: 0.18,
-      warpScale: 0.42,
-      feedbackOffset: -0.14,
-      camera: [0, 8.2, 29.0],
-      lookAt: [0, 2.1, 0],
+      name: "STAIR ROUTE",
+      hueOffset: -0.52,
+      warpScale: 0.92,
+      feedbackOffset: 0.04,
+      camera: [10.5, 13.5, 23.5],
+      lookAt: [0, 2.6, -1.2],
     },
     {
       name: "SOLAR BLOOM",
@@ -313,6 +313,7 @@
       float audioLift = pow(max(0.0, bandEnergy), 1.22) * (1.0 + uIntensity * 4.8);
       float centerForce = exp(-distanceFromCenter * 0.19) * (uBass * 5.2 + uMid * 1.7);
       float sceneBand = floor(uSceneStyle + 0.5);
+      float sceneFlash = 0.0;
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
         field.z += sin(field.x * 0.18 - uTime * 0.34) * (0.08 + uBass * 0.34);
@@ -329,9 +330,25 @@
         field.y += curtain * (0.28 + uMid * 1.5);
         field.x += curtain * 0.22;
       } else if (sceneBand > 4.5 && sceneBand < 5.5) {
-        float slab = smoothstep(0.72, 0.98, abs(sin(field.x * 0.18))) * smoothstep(16.5, 2.5, abs(field.z));
-        field.y += slab * (1.0 + uBass * 2.6);
-        field.x *= 0.96;
+        float floorId = floor((field.z + 19.6) / 3.92);
+        float floorT = fract((field.z + 19.6) / 3.92);
+        float routeSide = mix(-7.1, 7.1, step(0.5, mod(floorId, 2.0)));
+        float nextSide = -routeSide;
+        float routeX = mix(routeSide, nextSide, smoothstep(0.1, 0.9, floorT));
+        float routeLine = exp(-pow(field.x - routeX, 2.0) * 1.65);
+        float leftCore = exp(-pow(field.x + 7.1, 2.0) * 0.68) * smoothstep(20.8, 6.0, abs(field.z));
+        float rightCore = exp(-pow(field.x - 7.1, 2.0) * 0.68) * smoothstep(20.8, 6.0, abs(field.z));
+        float floorBand = 1.0 - smoothstep(0.015, 0.06, abs(floorT - 0.5));
+        float wrongDoor = exp(-dot(field.xz - vec2(-9.2, -11.6), field.xz - vec2(-9.2, -11.6)) * 0.34);
+        wrongDoor += exp(-dot(field.xz - vec2(8.9, 3.8), field.xz - vec2(8.9, 3.8)) * 0.34);
+        wrongDoor += exp(-dot(field.xz - vec2(-6.6, 12.0), field.xz - vec2(-6.6, 12.0)) * 0.34);
+        float lockedPulse = wrongDoor * (0.6 + 0.4 * sin(uTime * 4.8));
+        float walkPulse = routeLine * (0.72 + 0.28 * sin(uTime * 3.2 + floorId));
+        field.y += floorBand * 0.26 + (leftCore + rightCore) * (0.55 + uLowMid * 1.25);
+        field.y += walkPulse * (0.85 + uMid * 2.5 + uBass * 0.8) + lockedPulse * (1.6 + uHigh * 1.4);
+        field.x += sin(floorId * 1.7 + uTime * 0.38) * routeLine * 0.08;
+        sceneFlash += walkPulse * 1.25 + lockedPulse * 1.9 + (leftCore + rightCore) * 0.52 + floorBand * 0.2;
+        centerForce *= 0.45;
       } else if (sceneBand > 5.5 && sceneBand < 6.5) {
         float solar = exp(-pow(distanceFromCenter - 9.2, 2.0) * 0.018);
         field.y += solar * (0.65 + uBass * 1.8 + uHigh * 0.9);
@@ -399,7 +416,7 @@
       vec3 transformed = mix(field, form, uMorph);
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
       float energy = clamp(
-        bandEnergy * 0.62 + rippleFlash * 0.72 + impactFlash + uBass * 0.18,
+        bandEnergy * 0.62 + rippleFlash * 0.72 + impactFlash + sceneFlash * 0.85 + uBass * 0.18,
         0.0,
         2.2
       );
@@ -437,8 +454,8 @@
       if (sceneBand > 2.5 && sceneBand < 3.5) magenta = vec3(0.56, 0.22, 1.0);
       if (sceneBand > 3.5 && sceneBand < 4.5) violet = vec3(0.03, 0.36, 0.31);
       if (sceneBand > 4.5 && sceneBand < 5.5) {
-        violet = vec3(0.19, 0.16, 0.2);
-        magenta = vec3(0.92, 0.78, 0.62);
+        violet = vec3(0.03, 0.16, 0.2);
+        magenta = vec3(1.0, 0.72, 0.2);
       }
       if (sceneBand > 5.5 && sceneBand < 6.5) magenta = vec3(1.0, 0.46, 0.16);
       if (sceneBand > 6.5) {
@@ -598,7 +615,7 @@
       vec3 pink = mix(vec3(0.55, 0.08, 0.72), vec3(1.0, 0.17, 0.67), uHue);
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 3.5 && sceneBand < 4.5) pink = mix(vec3(0.05, 0.55, 0.46), vec3(0.52, 1.0, 0.82), uHue);
-      if (sceneBand > 4.5 && sceneBand < 5.5) pink = mix(vec3(0.46, 0.36, 0.28), vec3(1.0, 0.78, 0.46), uHue);
+      if (sceneBand > 4.5 && sceneBand < 5.5) pink = mix(vec3(0.0, 0.58, 0.7), vec3(1.0, 0.38, 0.12), uHue);
       if (sceneBand > 5.5 && sceneBand < 6.5) pink = mix(vec3(0.8, 0.18, 0.04), vec3(1.0, 0.66, 0.16), uHue);
       if (sceneBand > 6.5) pink = mix(vec3(0.08, 0.14, 0.7), vec3(0.42, 0.18, 1.0), uHue);
       vec3 color = mix(pink, vec3(1.0, 0.96, 1.0), vHeat);
