@@ -358,12 +358,16 @@ h1 {
 }
 
 .transport {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.sample-player,
+.audition-player {
+  display: none;
+  margin-top: 8px;
 }
 
 .sample-player {
-  display: none;
-  margin-top: 8px;
   padding: 11px 12px;
   border: 1px solid var(--line);
   background:
@@ -389,6 +393,43 @@ h1 {
 
 .sample-player b {
   color: rgba(255, 255, 255, 0.58);
+}
+
+.audition-player.active {
+  display: grid;
+  gap: 8px;
+}
+
+.audition-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  background: rgba(255, 75, 187, 0.08);
+}
+
+.audition-head span,
+.audition-head a {
+  color: var(--pink);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+}
+
+.audition-head a {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.audition-player iframe {
+  display: block;
+  width: 100%;
+  height: 116px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .scene-bank {
