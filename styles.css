@@ -124,6 +124,30 @@ h1 {
   pointer-events: auto;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.design-link {
+  padding: 15px 2px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-decoration: none;
+}
+
+.design-link:hover,
+.design-link:focus-visible {
+  border-color: var(--pink);
+  color: var(--text);
+  outline: none;
+}
+
 .panel-toggle:hover,
 .panel-toggle:focus-visible {
   border-color: var(--pink);
@@ -514,6 +538,17 @@ input[type="range"] {
 
   h1 {
     font-size: clamp(46px, 17vw, 78px);
+  }
+
+  .header-actions {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .design-link {
+    padding: 6px 1px 4px;
+    font-size: 7px;
   }
 
   .mode-switch {
