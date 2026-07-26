@@ -98,9 +98,12 @@ h1 {
     Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(52px, 8.2vw, 126px);
   font-weight: 900;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.065em;
   line-height: 0.72;
   mix-blend-mode: screen;
+  transform: scale(1.08, 0.86);
+  transform-origin: top left;
+  -webkit-text-stroke: 0.8px currentColor;
   text-transform: uppercase;
 }
 
