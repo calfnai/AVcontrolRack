@@ -115,12 +115,13 @@ a {
 h1 {
   margin: 14px 0 0;
   max-width: 720px;
-  color: var(--paper);
+  color: rgba(255, 248, 254, 0.92);
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(92px, 16vw, 250px);
   font-weight: 900;
   letter-spacing: -0.075em;
   line-height: 0.68;
+  mix-blend-mode: screen;
   transform: scale(1.08, 0.86);
   transform-origin: top left;
   -webkit-text-stroke: 0.8px currentColor;
