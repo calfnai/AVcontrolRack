@@ -1,50 +1,52 @@
 # RANGE ECHO
 
-## A Field for What Cannot Be Held
+## Notes Towards an Auditory Image
 
 **Artist statement / 2026**
 
-> Sound does not enter the image. It leaves a wound in it.
+> Audibility does not become image. It returns as evidence of a force already withdrawn.
 
-声音不进入图像，只在其中留下伤口。
+可听之物不被图像化，只留下退场后的证据。
 
-Range Echo begins with a refusal: sound should not be illustrated.
+Range Echo begins from a disagreement with the regime of visualisation: the assumption that sound, once rendered visible, should become legible.
 
-The work does not seek a faithful diagram of frequency, nor does it turn music into a decorative sequence of peaks. Instead, it asks what remains after sound has already passed through the body. Pressure becomes curvature. Rhythm becomes recurrence. A transient becomes a bruise of light. The image is therefore not a translation of sound, but its delayed evidence.
+Legibility is never innocent. It converts duration into object, intensity into quantity, and listening into the recognition of a pre-arranged sign. The work withholds this conversion. It does not explain the event; it constructs the conditions under which its consequences may be encountered.
 
-What appears on screen is a field suspended between surface and atmosphere. It has no horizon in the conventional sense, yet it behaves as if it possesses gravity, weather and memory. It gathers force at its centre, releases it towards the edges, and returns slowly to a state that is never entirely still.
+What appears is therefore neither transcription nor metaphor. It is a field in which sensation remains unresolved: spatial enough to be inhabited, unstable enough to resist becoming an illustration.
 
-声音在这里不是信息，而是一种留下痕迹的力量。
+My concern is not fidelity but authority: what permits a visual trace to stand in for an event that cannot be recovered?
+
+作品拒绝把声音整理成一个容易读懂的对象。
 
 ---
 
-## The Centre Is a Charged Absence
+## The Centre Operates as a Withheld Cause
 
-The centre of Range Echo is deliberately left unoccupied by interface, image or symbol. It is not a place in which a subject is displayed. It is a charged absence: a site waiting to be disturbed.
+The centre is deliberately denied an object. It is not a compositional vacancy awaiting content, but a causal position whose authority depends upon remaining unseen.
 
-Low and middle frequencies gather there before moving outwards as concentric pressure. The gesture recalls neither a conventional equaliser nor a timeline. It resembles a surface remembering that it has been touched. Each ring is born from an event, but survives it briefly, carrying the event beyond its source.
+Concentric movement begins there and immediately exceeds it. Cause is displaced into propagation; origin becomes readable only through delay. The field offers no event in itself, only an expanding set of relations through which an event may be inferred.
 
-The source itself often remains invisible. A deep impact is never represented by an object falling into the field. Only its consequence is given form: compression, recoil, a white edge, a temporary inversion of space. I am interested in this asymmetry between cause and evidence—the way an unseen force can become more present precisely because it withholds its image.
+This asymmetry between an absent source and excessive evidence is the work's central proposition. Visibility is assigned to consequence rather than cause. The image ceases to certify what happened and becomes the unstable site at which happening is retrospectively produced.
 
-中心不是主体，而是等待发生的空缺。
+中心隐藏原因，只让后果向外扩散。
 
-## Black Is Not a Background
+## Colour Distributes Perceptual Authority
 
-Black operates as distance, not emptiness.
+Black establishes the limit of available evidence. It refuses the fiction that the entire field is available to sight. What cannot be distinguished remains structurally present rather than visually completed.
 
-It allows the field to recede beyond the limits of the screen and gives each point a particular loneliness. It is also a duration: the interval before an event, and the residue after it. Against this darkness, magenta appears less as a colour than an afterimage—something the eye continues to hold after looking away.
+Magenta marks persistence without identity. It identifies no object. It registers the duration for which an event continues to condition perception after its source can no longer be located.
 
-White is reserved for the threshold at which energy can no longer remain colour. It appears only at the most intense edges, as a momentary overexposure. Its scarcity matters. If everything glows, nothing has arrived.
+White interrupts the field as a limit condition. It appears where differentiation briefly collapses. Its scarcity prevents emphasis from becoming atmosphere and intensity from becoming decoration.
 
 黑色是距离；洋红是余像；白色只属于临界点。
 
 ---
 
-# THE BODY HEARS BEFORE THE EYE
+# SENSATION EXCEEDS THE TERMS OF RECOGNITION
 
 ## Listening With the Skin
 
-Range Echo treats frequencies as different forms of bodily address.
+Frequency is organised as differential pressure, not pictorial information.
 
 The lower register has weight. It bends the apparent ground and enlarges the scale of the image. The middle register gives the field articulation, allowing pressure to travel rather than merely rise. High frequencies behave as brief directional cuts—small trajectories that enter, flare and disappear before they can become objects.
 
@@ -54,11 +56,11 @@ There is movement even in silence. The idle field is not a screensaver waiting f
 
 低频有重量，中频有结构，高频有速度；静默也仍然呼吸。
 
-## An Interface That Knows When to Withdraw
+## The Interface as a Protocol of Attention
 
-The interface occupies the margins because the centre belongs to sensation.
+The interface occupies the margins not as a gesture of visual modesty, but as a protocol for distributing attention.
 
-Typography sits at the upper left as a fixed mass against the unstable field. Its scale is intentionally excessive. The words do not label the image; they resist being absorbed by it. Their blunt, editorial weight prevents the work from dissolving into frictionless digital ambience.
+Its position determines which operations remain continuously legible and which must be temporarily suspended for the field to retain perceptual priority. Typography functions as an editorial threshold rather than a label: it establishes the terms of entry without claiming to interpret the event.
 
 Controls remain available, but they do not announce themselves as the primary subject. They withdraw until summoned. This is not an attempt to hide function beneath beauty. It is an ethical ordering of attention: first encounter the work, then decide whether to intervene.
 
@@ -66,15 +68,13 @@ The interface is therefore neither neutral nor ornamental. It choreographs dista
 
 界面退到边缘，把中央还给感知。
 
-## Technology as a Withdrawn Medium
+## The Apparatus as a Condition
 
-The technical apparatus is intentionally denied the status of spectacle.
+The apparatus is present as a condition and absent as an image.
 
-Computation is present everywhere, but it should not be the first thing perceived. The particles, responsive field and real-time analysis are not demonstrations of capacity; they are the material conditions through which an immaterial event acquires temporary weight.
+Computation is not concealed; it is refused representational privilege. The apparatus organises what can appear without becoming the content of that appearance.
 
-I am interested in a technology that withdraws after making perception possible. Its success is not measured by how visibly futuristic it appears, but by whether the viewer forgets the mechanism long enough to feel the image as weather, pressure or memory.
-
-Constraint plays an important role in this withdrawal. The work is made to inhabit an ordinary laptop rather than an exceptional machine. Economy is not a concession here. It prevents excess from becoming style and forces every luminous event to justify its presence.
+Constraint is consequently methodological rather than merely economical. It limits the number of possible gestures so that each visible event remains a decision, not an automatic demonstration of capacity.
 
 技术不是奇观，而是让感知发生后主动退场的媒介。
 
@@ -84,20 +84,20 @@ Range Echo is composed less from objects than from arrivals and disappearances.
 
 Nothing is allowed to become fully stable. A ring expands until its edge loses definition. An impact survives only as recoil. A particle trajectory vanishes before it can be followed to a conclusion. Even the field’s rotation avoids announcing a beginning or an end.
 
-This incomplete temporality is central to the work. Sound is always already leaving us. To listen is to experience presence becoming memory in real time. Range Echo gives that transition a spatial body, however provisional.
+The event is never simply present to perception. By the time it is recognised, it has already been reorganised by attention, expectation and recall. Range Echo does not overcome that delay. It gives the delay duration, scale and consequence.
 
-The work does not visualise music. It stages the moment in which sensation becomes recollection.
+The work occupies the delay between occurrence and recognition.
 
-作品不描绘音乐，而是呈现感受正在成为记忆的瞬间。
+作品停留在发生与被理解之间。
 
 ---
 
 ## Closing Note
 
-Range Echo is neither an instrument nor a picture. It is a temporary climate assembled between vibration, attention and afterimage.
+Range Echo stages an epistemic delay between vibration and recognition. It refuses the promise that an image can make an auditory event fully available.
 
-It asks the viewer to remain with what cannot be held: an impact without an object, a centre without a subject, a light produced by something that has already disappeared.
+To render is also to reorganise: to select a duration, establish a hierarchy and decide which consequences will count as evidence. The work makes that operation perceptible without pretending to resolve it. Its subject is not sound, but the authority claimed by every image that says: this is what happened.
 
-**What we see is not sound. It is the space sound leaves behind.**
+**THE EVENT WITHDRAWS. ITS CONSEQUENCES REMAIN.**
 
-我们看见的不是声音，而是声音离开后留下的空间。
+事件退场，后果仍在。
