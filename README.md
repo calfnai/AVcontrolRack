@@ -1,8 +1,8 @@
-# AV Control Rack / Range Echo
+# AV Control Rack / Range Echo V2
 
 一个可独立运行的 Three.js 音频视觉作品，同时保留 Web MIDI 和本地 OSC 控制能力。
 
-当前版本以这台 MacBook Pro（Apple M1、8 核 GPU、16GB 内存）作为性能上限：
+V2 以这台 MacBook Pro（Apple M1、8 核 GPU、16GB 内存）作为性能上限：
 
 - 160×160 GPU 粒子针阵，共 25,600 个核心点。
 - Laptop 默认档增加 8,000 个氛围/流星点，总量 33,600。
@@ -11,6 +11,18 @@
 - 重低音在随机位置产生不可见落点的冲击反馈。
 - 高频触发最多三条流星，落地后转为盘面冲击。
 - 图片、SVG、文字和音频盘面复用同一个核心粒子池。
+- SAMPLE 演示入口可在没有麦克风或音频文件时直接驱动画面。
+
+## V2 发布范围
+
+V2 合并了此前讨论但没有稳定露出的网页版本能力：
+
+- 生产页明确命名为 `Range Echo V2`。
+- `SAMPLE` 演示模式提供可直接试玩的内置节奏驱动画面。
+- `SCENE MEMORY V2` 给 A-H 场景补回语义 title。
+- `PERFORMANCE MODE` 使用 STABLE / LAPTOP / HIGH 三档，而不是只写 M1。
+- 控制抽屉补回 MIDI / OSC 的最小 I/O 说明。
+- Particle Form 默认文本使用 `ARE`，并继续支持文字、图片和 SVG。
 
 ## 在线试玩
 
@@ -62,6 +74,7 @@ npm start
 
 - `MIC`：请求麦克风。
 - `AUDIO`：选择本地音频文件。
+- `SAMPLE`：启动内置演示频段，不依赖麦克风、音频文件或第三方播放器。
 - `ECHO`：启用或暂停中低频扩散波。
 - `BLACK`：黑场。
 - `FREEZE`：冻结视觉状态。
