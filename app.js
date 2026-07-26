@@ -510,6 +510,9 @@
     uniform vec4 uMeteors[3];
     varying float vAlpha;
     varying float vHeat;
+    varying float vMeteor;
+    varying float vMeteorHead;
+    varying float vDepth;
 
     mat2 rotate2d(float angle) {
       float c = cos(angle);
@@ -527,41 +530,72 @@
       vec3 transformed = position;
       vAlpha = 0.0;
       vHeat = 0.0;
+      vMeteor = 0.0;
+      vMeteorHead = 0.0;
+      vDepth = 0.0;
 
       if (aKind > 0.5) {
         vec4 meteor = meteorForLane(aLane);
         float head = meteor.z;
-        float trail = aSeed * 0.3;
+        float headParticle = 1.0 - step(0.055, aSeed);
+        float trailSeed = clamp((aSeed - 0.055) / 0.945, 0.0, 1.0);
+        float brokenTail = step(
+          0.84,
+          fract(sin((floor(trailSeed * 34.0) + aLane * 9.0) * 71.31) * 43758.54)
+        );
+        float trail = headParticle > 0.5 ? aSeed * 0.008 : 0.008 + pow(trailSeed, 0.62) * 0.025;
         float p = head - trail;
         if (meteor.w > 0.0 && p > 0.0 && p < 1.0) {
-          vec3 start = vec3(meteor.x - 5.2, 17.0 + aLane * 1.3, meteor.y - 8.0);
+          vec3 start = vec3(meteor.x + 7.4 - aLane * 1.1, 21.5 + aLane * 1.6, meteor.y - 13.0);
           vec3 end = vec3(meteor.x, 0.35, meteor.y);
           transformed = mix(start, end, p);
-          transformed.x += sin(aSeed * 31.0) * 0.16;
-          transformed.y += cos(aSeed * 27.0) * 0.11;
-          vAlpha = pow(1.0 - aSeed, 0.7) * meteor.w;
+          vec3 direction = normalize(end - start);
+          vec3 side = normalize(cross(direction, vec3(0.0, 0.0, 1.0)));
+          float shardNoise = sin(aSeed * 391.7 + aLane * 13.0);
+          transformed += side * shardNoise * mix(0.025, 0.48, trailSeed);
+          transformed.z += cos(aSeed * 277.0) * mix(0.018, 0.54, trailSeed);
+          vAlpha = mix(
+            1.0,
+            brokenTail * pow(1.0 - trailSeed, 1.5) * 0.5,
+            1.0 - headParticle
+          ) * meteor.w;
           vHeat = 1.0;
+          vMeteor = 1.0;
+          vMeteorHead = headParticle;
         } else {
           transformed = vec3(0.0, -200.0, 0.0);
         }
       } else {
         float drift = uTime * (0.18 + aSeed * 0.2 + uHigh * 0.58);
         float swirl = uTime * (0.008 + uMid * 0.052) * (aSeed - 0.5);
+        float zSpeed = 2.8 + uMid * 4.5 + uHigh * 9.0 + aSeed * 1.8;
+        float zTravel = mod(position.z + uTime * zSpeed + aSeed * 53.0, 58.0) - 29.0;
+        float depth = smoothstep(-29.0, 24.0, zTravel);
+        transformed.z = zTravel;
         transformed.xz = rotate2d(swirl) * transformed.xz;
         transformed.y = mod(
           position.y + drift * (1.0 + uBass * 1.2 + uHigh * 2.6),
           17.0
         ) - 1.0;
-        transformed.x += sin(drift * 1.4 + aSeed * 23.0) * (0.8 + uMid * 1.6);
-        transformed.z += cos(drift + aSeed * 19.0) * (0.7 + uHigh * 1.4);
-        vAlpha = (0.1 + uHigh * 0.34 + uMid * 0.08) * (0.35 + aSeed * 0.65);
+        transformed.x += sin(drift * 1.4 + aSeed * 23.0) * (0.8 + uMid * 1.6)
+          + (aSeed - 0.5) * depth * 2.4;
+        transformed.y += (aSeed - 0.5) * depth * 1.2;
+        vAlpha = (0.075 + uHigh * 0.3 + uMid * 0.07)
+          * (0.3 + aSeed * 0.7)
+          * mix(0.42, 1.0, depth);
+        vDepth = depth;
       }
 
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+      float meteorSize = mix(5.5 + (1.0 - aSeed) * 4.5, 24.0, vMeteorHead);
+      float atmosphereSize = mix(2.0, 7.0, vDepth);
       gl_PointSize = clamp(
-        (aKind > 0.5 ? 10.0 : 5.0) * uPointScale / max(3.0, -mvPosition.z) * 12.0,
+        mix(atmosphereSize, meteorSize, vMeteor)
+          * uPointScale
+          / max(2.6, -mvPosition.z)
+          * 12.0,
         1.0,
-        14.0
+        vMeteorHead > 0.5 ? 28.0 : 15.0
       );
       gl_Position = projectionMatrix * mvPosition;
     }
@@ -573,14 +607,27 @@
     uniform float uHue;
     varying float vAlpha;
     varying float vHeat;
+    varying float vMeteor;
+    varying float vMeteorHead;
+    varying float vDepth;
 
     void main() {
       vec2 p = gl_PointCoord - 0.5;
-      float d = length(p);
-      float glow = 1.0 - smoothstep(0.04, 0.5, d);
+      float angle = -0.33;
+      mat2 meteorRotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+      vec2 q = meteorRotation * p;
+      float roundGlow = 1.0 - smoothstep(0.04, 0.5, length(p));
+      float spearDistance = abs(q.x) * 2.25 + abs(q.y) * 0.42;
+      float spearCore = 1.0 - smoothstep(0.035, 0.18, spearDistance);
+      float spearHalo = 1.0 - smoothstep(0.08, 0.52, spearDistance);
+      float headGlow = 1.0 - smoothstep(0.025, 0.5, length(q * vec2(1.0, 1.35)));
+      float meteorGlow = spearCore * mix(0.82, 1.25, vMeteorHead)
+        + spearHalo * mix(0.24, 0.46, vMeteorHead);
+      float glow = mix(roundGlow * mix(0.55, 1.0, vDepth), meteorGlow, vMeteor);
       if (glow * vAlpha < 0.01) discard;
       vec3 pink = mix(vec3(0.55, 0.08, 0.72), vec3(1.0, 0.17, 0.67), uHue);
-      vec3 color = mix(pink, vec3(1.0, 0.96, 1.0), vHeat);
+      vec3 color = mix(pink, vec3(1.0, 0.98, 0.91), vHeat);
+      color = mix(color, vec3(1.0, 1.0, 1.0), vMeteorHead * headGlow);
       gl_FragColor = vec4(color * (0.58 + uIntensity * 0.56), glow * vAlpha);
     }
   `;
