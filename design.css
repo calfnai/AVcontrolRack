@@ -116,7 +116,7 @@ h1 {
   margin: 14px 0 0;
   max-width: 720px;
   color: var(--paper);
-  font-family: var(--sans);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(92px, 16vw, 250px);
   font-weight: 900;
   letter-spacing: -0.065em;

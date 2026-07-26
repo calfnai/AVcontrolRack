@@ -21,22 +21,11 @@
   const FIELD_SPACING = 0.27;
   const FIELD_HALF = ((GRID_SIZE - 1) * FIELD_SPACING) / 2;
   const FORM_CANVAS_SIZE = 160;
-  const MOTION_TUNING = Object.freeze({
-    rippleCooldown: 0.14,
-    rippleDensityFloor: 0.72,
-    impactCooldown: 0.34,
-    impactDensityFloor: 2.15,
-    meteorCooldown: 0.42,
-    meteorDensityFloor: 1.35,
-    idleRippleInterval: 1.45,
-    idleImpactInterval: 4.4,
-    idleMeteorInterval: 6.2,
-  });
 
   const QUALITY_PROFILES = {
     stable: { label: "STABLE", atmosphere: 3000, pixelRatio: 1, glow: false },
-    laptop: { label: "LAPTOP", atmosphere: 8000, pixelRatio: 1.25, glow: true },
-    high: { label: "HIGH", atmosphere: 24000, pixelRatio: 1.25, glow: true },
+    m1: { label: "M1 DEFAULT", atmosphere: 8000, pixelRatio: 1.25, glow: true },
+    high: { label: "HIGH / M1 MAX", atmosphere: 24000, pixelRatio: 1.25, glow: true },
   };
 
   if (CORE_COUNT + MAX_ATMOSPHERE > HARD_PARTICLE_LIMIT) {
@@ -61,7 +50,7 @@
     morph: 0,
     morphTarget: 0,
     particleLabel: "",
-    quality: "laptop",
+    quality: "m1",
     calibrated: false,
     bass: 0,
     mid: 0,
@@ -69,22 +58,10 @@
     subBass: 0,
     lowMid: 0,
     bpm: 0,
-    bpmConfidence: 0,
     fps: 0,
     p95: 0,
     syntheticStress: false,
   };
-
-  const SCENE_PRESETS = [
-    { name: "RANGE ECHO", hue: 0.9, warp: 0.42, feedback: 0.58, camera: [0, 10.2, 27.5] },
-    { name: "SILK CURRENT", hue: 0.5, warp: 0.3, feedback: 0.64, camera: [-7, 7.8, 25] },
-    { name: "LIQUID LENS", hue: 0.78, warp: 0.2, feedback: 0.5, camera: [0, 14.2, 23.5] },
-    { name: "ORBITAL", hue: 0.58, warp: 0.52, feedback: 0.72, camera: [9, 8.5, 25.5] },
-    { name: "AURORA", hue: 0.38, warp: 0.66, feedback: 0.76, camera: [-10, 6.7, 24] },
-    { name: "MONOLITH", hue: 0.08, warp: 0.14, feedback: 0.42, camera: [0, 8.2, 29] },
-    { name: "SOLAR BLOOM", hue: 0.94, warp: 0.36, feedback: 0.68, camera: [7, 12.5, 25] },
-    { name: "DEEP SPACE", hue: 0.7, warp: 0.62, feedback: 0.86, camera: [-5, 4.8, 24] },
-  ];
 
   const dom = Object.fromEntries(
     [
@@ -168,7 +145,6 @@
   const impactUniforms = Array.from({ length: IMPACT_SLOTS }, () => new THREE.Vector4(0, 0, 2, 0));
   const meteorUniforms = Array.from({ length: METEOR_SLOTS }, () => new THREE.Vector4(0, 0, 2, 0));
   const bandUniforms = Array.from({ length: 8 }, () => 0);
-  const rawBandValues = Array.from({ length: 8 }, () => 0);
 
   const coreUniforms = {
     uTime: { value: 0 },
@@ -185,8 +161,6 @@
     uMorph: { value: 0 },
     uEffect: { value: 0 },
     uEffectAmount: { value: 0 },
-    uSceneStyle: { value: 0 },
-    uSceneTransition: { value: 0 },
     uPointScale: { value: 1 },
     uRipples: { value: rippleUniforms },
     uImpacts: { value: impactUniforms },
@@ -213,8 +187,6 @@
     uniform float uMorph;
     uniform float uEffect;
     uniform float uEffectAmount;
-    uniform float uSceneStyle;
-    uniform float uSceneTransition;
     uniform float uPointScale;
     uniform vec4 uRipples[6];
     uniform vec4 uImpacts[8];
@@ -250,24 +222,7 @@
       float idle = 0.14
         + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.09
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.05;
-      float angle = atan(field.z, field.x);
-      float travelingBand = (
-        sin(
-          distanceFromCenter * (0.48 + aBand * 0.035)
-          - uTime * (1.15 + uMid * 2.7)
-          + aBand * 0.82
-        ) * 0.5 + 0.5
-      ) * bandEnergy;
-      float crossCurrent = sin(
-        field.x * 0.34
-        + field.z * 0.27
-        - uTime * (0.74 + uHigh * 3.6)
-        + aSeed * 4.0
-      ) * (uMid * 0.24 + uHigh * 0.16);
-      float audioLift =
-        pow(max(0.0, bandEnergy), 1.14) * (1.0 + uIntensity * 4.6)
-        + travelingBand * (0.55 + uIntensity * 1.2)
-        + crossCurrent;
+      float audioLift = pow(max(0.0, bandEnergy), 1.22) * (1.0 + uIntensity * 4.8);
       float centerForce = exp(-distanceFromCenter * 0.19) * (uBass * 5.2 + uMid * 1.7);
       float rippleLift = 0.0;
       float rippleFlash = 0.0;
@@ -306,55 +261,7 @@
       field.xz += vec2(
         sin(field.z * 0.3 + uTime + aSeed * 4.0),
         cos(field.x * 0.27 - uTime + aSeed * 3.0)
-      ) * uWarp * (uMid * 0.16 + uHigh * 0.07);
-      field.xz += vec2(cos(angle), sin(angle))
-        * sin(angle * 6.0 - uTime * (0.9 + uHigh * 2.0) + distanceFromCenter * 0.22)
-        * uWarp * (uMid + uHigh) * 0.075;
-
-      // Eight scene memories share one field, but use genuinely different
-      // spatial grammars. Keeping this in the vertex shader makes scene
-      // changes cheap enough for the M1 budget.
-      float sceneBand = floor(uSceneStyle + 0.5);
-      if (sceneBand > 0.5 && sceneBand < 1.5) {
-        // SILK CURRENT — broad, continuous travelling folds.
-        field.y += sin(field.x * 0.22 + uTime * 0.74) * 1.25
-          + cos(field.z * 0.17 - uTime * 0.48) * 0.72;
-        field.x += sin(field.z * 0.13 + uTime * 0.3) * 0.55;
-      } else if (sceneBand > 1.5 && sceneBand < 2.5) {
-        // LIQUID LENS — smooth central bowl and pearlescent breathing.
-        float lens = exp(-distanceFromCenter * 0.075);
-        field.y += lens * (2.4 + sin(uTime * 0.58) * 1.15);
-        field.xz *= 0.92 + lens * 0.1;
-      } else if (sceneBand > 2.5 && sceneBand < 3.5) {
-        // ORBITAL — a slowly opening spiral disc.
-        field.xz = rotate2d(distanceFromCenter * 0.045 + uTime * 0.1) * field.xz;
-        field.y += sin(angle * 4.0 + distanceFromCenter * 0.26 - uTime) * 0.72;
-      } else if (sceneBand > 3.5 && sceneBand < 4.5) {
-        // AURORA — diagonal ribbons with long, silky motion.
-        field.y += sin(field.x * 0.16 + field.z * 0.09 - uTime * 0.62) * 1.65;
-        field.z += sin(field.x * 0.11 + uTime * 0.28) * 0.85;
-      } else if (sceneBand > 4.5 && sceneBand < 5.5) {
-        // MONOLITH — restrained monochrome terraces.
-        field.y = floor((field.y + sin(distanceFromCenter * 0.38 - uTime * 0.6)) * 2.2) / 2.2;
-        field.xz *= 0.94;
-      } else if (sceneBand > 5.5 && sceneBand < 6.5) {
-        // BLOOM — petal-like radial sculpture.
-        field.y += pow(max(0.0, cos(angle * 7.0 + uTime * 0.22)), 5.0)
-          * exp(-distanceFromCenter * 0.055) * 3.2;
-        field.xz *= 0.9 + 0.08 * sin(angle * 7.0);
-      } else if (sceneBand > 6.5) {
-        // DEEP SPACE — suspended constellation with greater Z depth.
-        field.y += (aSeed - 0.5) * 5.2 + sin(aSeed * 31.0 + uTime * 0.3) * 0.5;
-        field.z += (aSeed - 0.5) * 6.0;
-      }
-
-      // Scene changes contract, corkscrew and bloom. The event is visible,
-      // while the particle pool and draw calls remain unchanged.
-      float transitionBell = sin(clamp(uSceneTransition, 0.0, 1.0) * 3.14159265);
-      float transitionTurn = transitionBell * (1.4 + aSeed * 2.3);
-      field.xz = rotate2d(transitionTurn) * field.xz;
-      field *= 1.0 - transitionBell * (0.2 + aSeed * 0.18);
-      field.y += (aSeed - 0.5) * transitionBell * 8.0;
+      ) * uWarp * uMid * 0.1;
 
       vec3 form = aTarget;
       float effect = uEffectAmount;
@@ -402,22 +309,13 @@
     varying float vSeed;
     varying float vHue;
     uniform float uIntensity;
-    uniform float uSceneStyle;
 
     vec3 palette(float hueShift, float energy) {
       vec3 violet = vec3(0.31, 0.055, 0.52);
       vec3 magenta = vec3(1.0, 0.055, 0.58);
       vec3 pearl = vec3(1.0, 0.91, 0.99);
       float drift = clamp(hueShift + vSeed * 0.1, 0.0, 1.0);
-      float style = floor(uSceneStyle + 0.5);
       vec3 base = mix(violet, magenta, 0.35 + drift * 0.45);
-      if (style > 0.5 && style < 1.5) base = mix(vec3(0.05, 0.48, 0.78), vec3(0.66, 0.92, 1.0), drift);
-      else if (style > 1.5 && style < 2.5) base = mix(vec3(0.38, 0.18, 0.55), vec3(1.0, 0.72, 0.84), drift);
-      else if (style > 2.5 && style < 3.5) base = mix(vec3(0.18, 0.06, 0.55), vec3(0.18, 0.88, 0.78), drift);
-      else if (style > 3.5 && style < 4.5) base = mix(vec3(0.08, 0.38, 0.52), vec3(0.72, 1.0, 0.68), drift);
-      else if (style > 4.5 && style < 5.5) base = mix(vec3(0.18), vec3(0.92), drift);
-      else if (style > 5.5 && style < 6.5) base = mix(vec3(0.72, 0.12, 0.22), vec3(1.0, 0.67, 0.12), drift);
-      else if (style > 6.5) base = mix(vec3(0.12, 0.14, 0.48), vec3(0.58, 0.4, 1.0), drift);
       return mix(base, pearl, smoothstep(0.55, 1.7, energy));
     }
 
@@ -487,8 +385,6 @@
 
   const atmosphereUniforms = {
     uTime: { value: 0 },
-    uBass: { value: 0 },
-    uMid: { value: 0 },
     uHigh: { value: 0 },
     uIntensity: { value: state.intensity },
     uHue: { value: state.hue },
@@ -502,23 +398,12 @@
     attribute float aKind;
     attribute float aLane;
     uniform float uTime;
-    uniform float uBass;
-    uniform float uMid;
     uniform float uHigh;
     uniform float uIntensity;
     uniform float uPointScale;
     uniform vec4 uMeteors[3];
     varying float vAlpha;
     varying float vHeat;
-    varying float vMeteor;
-    varying float vMeteorHead;
-    varying float vDepth;
-
-    mat2 rotate2d(float angle) {
-      float c = cos(angle);
-      float s = sin(angle);
-      return mat2(c, -s, s, c);
-    }
 
     vec4 meteorForLane(float lane) {
       if (lane < 0.5) return uMeteors[0];
@@ -530,72 +415,36 @@
       vec3 transformed = position;
       vAlpha = 0.0;
       vHeat = 0.0;
-      vMeteor = 0.0;
-      vMeteorHead = 0.0;
-      vDepth = 0.0;
 
       if (aKind > 0.5) {
         vec4 meteor = meteorForLane(aLane);
         float head = meteor.z;
-        float headParticle = 1.0 - step(0.055, aSeed);
-        float trailSeed = clamp((aSeed - 0.055) / 0.945, 0.0, 1.0);
-        float brokenTail = step(
-          0.84,
-          fract(sin((floor(trailSeed * 34.0) + aLane * 9.0) * 71.31) * 43758.54)
-        );
-        float trail = headParticle > 0.5 ? aSeed * 0.008 : 0.008 + pow(trailSeed, 0.62) * 0.025;
+        float trail = aSeed * 0.3;
         float p = head - trail;
         if (meteor.w > 0.0 && p > 0.0 && p < 1.0) {
-          vec3 start = vec3(meteor.x + 7.4 - aLane * 1.1, 21.5 + aLane * 1.6, meteor.y - 13.0);
+          vec3 start = vec3(meteor.x - 5.2, 17.0 + aLane * 1.3, meteor.y - 8.0);
           vec3 end = vec3(meteor.x, 0.35, meteor.y);
           transformed = mix(start, end, p);
-          vec3 direction = normalize(end - start);
-          vec3 side = normalize(cross(direction, vec3(0.0, 0.0, 1.0)));
-          float shardNoise = sin(aSeed * 391.7 + aLane * 13.0);
-          transformed += side * shardNoise * mix(0.025, 0.48, trailSeed);
-          transformed.z += cos(aSeed * 277.0) * mix(0.018, 0.54, trailSeed);
-          vAlpha = mix(
-            1.0,
-            brokenTail * pow(1.0 - trailSeed, 1.5) * 0.5,
-            1.0 - headParticle
-          ) * meteor.w;
+          transformed.x += sin(aSeed * 31.0) * 0.16;
+          transformed.y += cos(aSeed * 27.0) * 0.11;
+          vAlpha = pow(1.0 - aSeed, 0.7) * meteor.w;
           vHeat = 1.0;
-          vMeteor = 1.0;
-          vMeteorHead = headParticle;
         } else {
           transformed = vec3(0.0, -200.0, 0.0);
         }
       } else {
-        float drift = uTime * (0.18 + aSeed * 0.2 + uHigh * 0.58);
-        float swirl = uTime * (0.008 + uMid * 0.052) * (aSeed - 0.5);
-        float zSpeed = 2.8 + uMid * 4.5 + uHigh * 9.0 + aSeed * 1.8;
-        float zTravel = mod(position.z + uTime * zSpeed + aSeed * 53.0, 58.0) - 29.0;
-        float depth = smoothstep(-29.0, 24.0, zTravel);
-        transformed.z = zTravel;
-        transformed.xz = rotate2d(swirl) * transformed.xz;
-        transformed.y = mod(
-          position.y + drift * (1.0 + uBass * 1.2 + uHigh * 2.6),
-          17.0
-        ) - 1.0;
-        transformed.x += sin(drift * 1.4 + aSeed * 23.0) * (0.8 + uMid * 1.6)
-          + (aSeed - 0.5) * depth * 2.4;
-        transformed.y += (aSeed - 0.5) * depth * 1.2;
-        vAlpha = (0.075 + uHigh * 0.3 + uMid * 0.07)
-          * (0.3 + aSeed * 0.7)
-          * mix(0.42, 1.0, depth);
-        vDepth = depth;
+        float drift = uTime * (0.12 + aSeed * 0.14);
+        transformed.y = mod(position.y + drift * (1.0 + uHigh * 2.0), 17.0) - 1.0;
+        transformed.x += sin(drift + aSeed * 23.0) * 0.8;
+        transformed.z += cos(drift * 0.7 + aSeed * 19.0) * 0.7;
+        vAlpha = (0.08 + uHigh * 0.22) * (0.35 + aSeed * 0.65);
       }
 
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
-      float meteorSize = mix(5.5 + (1.0 - aSeed) * 4.5, 24.0, vMeteorHead);
-      float atmosphereSize = mix(2.0, 7.0, vDepth);
       gl_PointSize = clamp(
-        mix(atmosphereSize, meteorSize, vMeteor)
-          * uPointScale
-          / max(2.6, -mvPosition.z)
-          * 12.0,
+        (aKind > 0.5 ? 10.0 : 5.0) * uPointScale / max(3.0, -mvPosition.z) * 12.0,
         1.0,
-        vMeteorHead > 0.5 ? 28.0 : 15.0
+        14.0
       );
       gl_Position = projectionMatrix * mvPosition;
     }
@@ -607,27 +456,14 @@
     uniform float uHue;
     varying float vAlpha;
     varying float vHeat;
-    varying float vMeteor;
-    varying float vMeteorHead;
-    varying float vDepth;
 
     void main() {
       vec2 p = gl_PointCoord - 0.5;
-      float angle = -0.33;
-      mat2 meteorRotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-      vec2 q = meteorRotation * p;
-      float roundGlow = 1.0 - smoothstep(0.04, 0.5, length(p));
-      float spearDistance = abs(q.x) * 2.25 + abs(q.y) * 0.42;
-      float spearCore = 1.0 - smoothstep(0.035, 0.18, spearDistance);
-      float spearHalo = 1.0 - smoothstep(0.08, 0.52, spearDistance);
-      float headGlow = 1.0 - smoothstep(0.025, 0.5, length(q * vec2(1.0, 1.35)));
-      float meteorGlow = spearCore * mix(0.82, 1.25, vMeteorHead)
-        + spearHalo * mix(0.24, 0.46, vMeteorHead);
-      float glow = mix(roundGlow * mix(0.55, 1.0, vDepth), meteorGlow, vMeteor);
+      float d = length(p);
+      float glow = 1.0 - smoothstep(0.04, 0.5, d);
       if (glow * vAlpha < 0.01) discard;
       vec3 pink = mix(vec3(0.55, 0.08, 0.72), vec3(1.0, 0.17, 0.67), uHue);
-      vec3 color = mix(pink, vec3(1.0, 0.98, 0.91), vHeat);
-      color = mix(color, vec3(1.0, 1.0, 1.0), vMeteorHead * headGlow);
+      vec3 color = mix(pink, vec3(1.0, 0.96, 1.0), vHeat);
       gl_FragColor = vec4(color * (0.58 + uIntensity * 0.56), glow * vAlpha);
     }
   `;
@@ -677,7 +513,6 @@
     uResolution: { value: new THREE.Vector2(1, 1) },
     uTime: { value: 0 },
     uGlow: { value: 1 },
-    uSceneStyle: { value: 0 },
   };
   const postMaterial = new THREE.ShaderMaterial({
     uniforms: postUniforms,
@@ -694,7 +529,6 @@
       uniform vec2 uResolution;
       uniform float uTime;
       uniform float uGlow;
-      uniform float uSceneStyle;
       varying vec2 vUv;
 
       float hash(vec2 p) {
@@ -715,11 +549,9 @@
         bloom += texture2D(uScene, vUv + texel * vec2(-1.5, -1.5)).rgb;
         bloom *= 0.125;
         float vignette = smoothstep(0.86, 0.28, length(vUv - 0.5));
-        float modernity = step(0.5, uSceneStyle);
-        float grain = (hash(vUv * uResolution + uTime) - 0.5)
-          * mix(0.012, 0.0025, modernity);
+        float grain = (hash(vUv * uResolution + uTime) - 0.5) * 0.012;
         vec3 color = center + max(bloom - 0.1, 0.0) * 0.18 * uGlow;
-        color *= mix(0.72 + vignette * 0.28, 0.88 + vignette * 0.12, modernity);
+        color *= 0.72 + vignette * 0.28;
         color += grain;
         gl_FragColor = vec4(color, 1.0);
       }
@@ -756,26 +588,6 @@
   let rippleCursor = 0;
   let impactCursor = 0;
   let meteorCursor = 0;
-  const eventCounters = {
-    ripples: 0,
-    impacts: 0,
-    meteors: 0,
-    densityFloorRipples: 0,
-    densityFloorImpacts: 0,
-    densityFloorMeteors: 0,
-  };
-  const motionDebug = {
-    rawLowMid: 0,
-    rawSubBass: 0,
-    rawHigh: 0,
-    lowFlux: 0,
-    subFlux: 0,
-    highFlux: 0,
-    rippleThreshold: 0,
-    impactThreshold: 0,
-    meteorThreshold: 0,
-    audible: false,
-  };
 
   let audioContext;
   let analyser;
@@ -784,7 +596,6 @@
   let microphoneStream;
   let audioElement;
   let audioObjectUrl;
-  let testBandValues = null;
   let pointerX = 0.5;
   let pointerY = 0.48;
   let time = 0;
@@ -793,40 +604,27 @@
   let lastRippleAt = -10;
   let lastImpactAt = -10;
   let lastMeteorAt = -10;
-  let previousRawLowMid = 0;
-  let previousRawSubBass = 0;
-  let previousRawHigh = 0;
+  let previousLowMid = 0;
+  let previousSubBass = 0;
+  let previousHigh = 0;
   let rotation = 0;
   let rotationTarget = 0;
-  const beatOnsets = [];
-  let lastTempoOnsetAt = -10;
-  let sceneTransition = 1;
-  let sceneTransitionStartedAt = -10;
-  let sceneTransitionDuration = 1.25;
-  let cameraCutOffset = 0;
-  let cameraDollyPulse = 0;
-  let cameraCutPending = false;
-  let tempoBeatCount = 0;
-  const lowMidHistory = [];
-  const subBassHistory = [];
-  const highHistory = [];
+  const beatIntervals = [];
+  const energyHistory = [];
   const frameTimes = [];
   let statsUpdatedAt = 0;
   let calibrationStartedAt = performance.now();
   let lowFpsDuration = 0;
   let idlePulseAt = -10;
-  let idleImpactAt = -10;
-  let idleMeteorAt = -10;
 
   function configureQuality(profileName) {
-    const resolvedName = QUALITY_PROFILES[profileName] ? profileName : "laptop";
-    const profile = QUALITY_PROFILES[resolvedName];
-    state.quality = resolvedName;
+    const profile = QUALITY_PROFILES[profileName] || QUALITY_PROFILES.m1;
+    state.quality = profileName;
     atmosphereGeometry.setDrawRange(0, profile.atmosphere);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.pixelRatio));
     postUniforms.uGlow.value = profile.glow ? 1 : 0;
     qualityButtons.forEach((button) =>
-      button.classList.toggle("active", button.dataset.quality === resolvedName),
+      button.classList.toggle("active", button.dataset.quality === profileName),
     );
     dom.qualityReadout.textContent = profile.label;
     dom.particleReadout.textContent = `${((CORE_COUNT + profile.atmosphere) / 1000).toFixed(1)}k`;
@@ -836,10 +634,10 @@
 
   function downgradeQuality() {
     if (state.quality === "high") {
-      configureQuality("laptop");
+      configureQuality("m1");
       return;
     }
-    if (state.quality === "laptop") configureQuality("stable");
+    if (state.quality === "m1") configureQuality("stable");
   }
 
   function resize() {
@@ -873,27 +671,24 @@
   }
 
   function setScene(index, shouldSend = true) {
-    const nextScene = Math.max(0, Math.min(SCENE_PRESETS.length - 1, Number(index) || 0));
-    if (nextScene !== state.scene || shouldSend) {
-      sceneTransition = 0;
-      sceneTransitionStartedAt = performance.now() / 1000;
-      sceneTransitionDuration = state.bpmConfidence > 0.35 && state.bpm
-        ? clamp(60 / state.bpm * 1.6, 0.75, 1.45)
-        : 1.2;
-      cameraCutOffset = (Math.random() - 0.5) * 0.72;
-      cameraDollyPulse = 1;
-      cameraCutPending = true;
-    }
-    state.scene = nextScene;
+    state.scene = Number(index) || 0;
     sceneButtons.forEach((button) =>
       button.classList.toggle("active", Number(button.dataset.scene) === state.scene),
     );
-    const preset = SCENE_PRESETS[state.scene];
+    const presets = [
+      { hue: 0.9, warp: 0.42, feedback: 0.58 },
+      { hue: 0.74, warp: 0.56, feedback: 0.72 },
+      { hue: 0.98, warp: 0.24, feedback: 0.46 },
+      { hue: 0.62, warp: 0.72, feedback: 0.64 },
+      { hue: 0.84, warp: 0.34, feedback: 0.82 },
+      { hue: 0.7, warp: 0.68, feedback: 0.5 },
+      { hue: 1, warp: 0.18, feedback: 0.68 },
+      { hue: 0.8, warp: 0.48, feedback: 0.9 },
+    ];
+    const preset = presets[state.scene];
     setParam("hue", preset.hue, false);
     setParam("warp", preset.warp, false);
     setParam("feedback", preset.feedback, false);
-    coreUniforms.uSceneStyle.value = state.scene;
-    updateModeLabel();
     if (shouldSend) sendParam("scene", state.scene);
   }
 
@@ -919,78 +714,8 @@
     const audioLabel = analyser ? "LIVE AUDIO" : "IDLE";
     dom.modeLabel.textContent =
       state.mode === "form"
-        ? `PARTICLE FORM / ${state.particleLabel || "ARE"}`
-        : `${SCENE_PRESETS[state.scene].name} / ${audioLabel}`;
-  }
-
-  function normalizeTempo(bpm) {
-    let value = bpm;
-    while (value < 72) value *= 2;
-    while (value > 168) value /= 2;
-    return value;
-  }
-
-  function registerTempoOnset(nowSeconds, strength = 1) {
-    if (nowSeconds - lastTempoOnsetAt < 0.24) return;
-    lastTempoOnsetAt = nowSeconds;
-    tempoBeatCount += 1;
-    cameraDollyPulse = Math.max(cameraDollyPulse, strength * 0.7);
-    beatOnsets.push({ time: nowSeconds, strength: clamp(strength, 0.15, 1) });
-    while (beatOnsets.length > 36 || nowSeconds - beatOnsets[0].time > 18) beatOnsets.shift();
-    if (beatOnsets.length < 5) return;
-
-    const bins = new Float32Array(193); // 72–168 BPM in 0.5 BPM steps.
-    for (let end = 1; end < beatOnsets.length; end += 1) {
-      for (let gap = 1; gap <= 4 && end - gap >= 0; gap += 1) {
-        const interval = beatOnsets[end].time - beatOnsets[end - gap].time;
-        if (interval < 0.25 || interval > 3.4) continue;
-        const candidate = normalizeTempo((60 * gap) / interval);
-        const center = Math.round((candidate - 72) * 2);
-        const recency = 0.55 + end / beatOnsets.length * 0.45;
-        const weight =
-          Math.sqrt(beatOnsets[end].strength * beatOnsets[end - gap].strength) *
-          recency /
-          Math.sqrt(gap);
-        for (let offset = -3; offset <= 3; offset += 1) {
-          const bin = center + offset;
-          if (bin >= 0 && bin < bins.length) bins[bin] += weight * Math.exp(-offset * offset / 3.2);
-        }
-      }
-    }
-
-    let bestIndex = 0;
-    let bestScore = 0;
-    let totalScore = 0;
-    bins.forEach((score, index) => {
-      const candidate = 72 + index * 0.5;
-      const continuity =
-        state.bpm > 0 ? Math.exp(-Math.abs(candidate - state.bpm) / 16) * 0.18 + 0.82 : 1;
-      const adjusted = score * continuity;
-      totalScore += adjusted;
-      if (adjusted > bestScore) {
-        bestScore = adjusted;
-        bestIndex = index;
-      }
-    });
-    const estimate = 72 + bestIndex * 0.5;
-    const confidence = clamp((bestScore / Math.max(0.001, totalScore)) * 9.5);
-    state.bpmConfidence = state.bpmConfidence * 0.7 + confidence * 0.3;
-    if (state.bpmConfidence > 0.2) {
-      if (!state.bpm) state.bpm = estimate;
-      else {
-        const delta = estimate - state.bpm;
-        const safeDelta = Math.abs(delta) > 24 && state.bpmConfidence < 0.58 ? 0 : delta;
-        state.bpm += safeDelta * (0.08 + state.bpmConfidence * 0.16);
-      }
-    }
-    if (
-      strength > 0.72 &&
-      state.bpmConfidence > 0.5 &&
-      tempoBeatCount % 8 === 0
-    ) {
-      cameraCutOffset = (Math.random() < 0.5 ? -1 : 1) * (0.38 + Math.random() * 0.32);
-      cameraCutPending = true;
-    }
+        ? `PARTICLE FORM / ${state.particleLabel || "ECHO"}`
+        : `RANGE FIELD / ${audioLabel}`;
   }
 
   async function sendParam(name, value) {
@@ -1092,10 +817,9 @@
     audioElement.crossOrigin = "anonymous";
     const context = ensureAnalyser().context;
     await connectAudioNode(context.createMediaElementSource(audioElement), true);
-    const playback = audioElement.play();
+    await audioElement.play();
     setStatus(dom.audioStatus, "FILE LIVE", true);
     dom.audioToggle.classList.remove("active");
-    await playback;
   }
 
   function bandEnergy(fromHz, toHz) {
@@ -1111,20 +835,7 @@
     return clamp((sum / Math.max(1, end - start) / 255) * state.audioGain * 1.55);
   }
 
-  function channelStats(history, fallback = 0.03) {
-    if (!history.length) return { mean: fallback, deviation: fallback * 0.35 };
-    const mean = history.reduce((sum, value) => sum + value, 0) / history.length;
-    const variance =
-      history.reduce((sum, value) => sum + (value - mean) ** 2, 0) / history.length;
-    return { mean, deviation: Math.sqrt(variance) };
-  }
-
-  function recordChannel(history, value) {
-    history.push(value);
-    if (history.length > 150) history.shift();
-  }
-
-  function spawnRipple(strength = 0.6, source = "audio") {
+  function spawnRipple(strength = 0.6) {
     const pulse = {
       age: 0,
       life: 1.75 + state.feedback * 1.05,
@@ -1132,11 +843,9 @@
     };
     if (ripples.length < RIPPLE_SLOTS) ripples.push(pulse);
     else ripples[rippleCursor++ % RIPPLE_SLOTS] = pulse;
-    eventCounters.ripples += 1;
-    if (source === "density-floor") eventCounters.densityFloorRipples += 1;
   }
 
-  function spawnImpact(strength = 0.75, x, z, source = "audio") {
+  function spawnImpact(strength = 0.75, x, z) {
     const radius = FIELD_HALF * 0.82 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
     const impact = {
@@ -1148,11 +857,9 @@
     };
     if (impacts.length < IMPACT_SLOTS) impacts.push(impact);
     else impacts[impactCursor++ % IMPACT_SLOTS] = impact;
-    eventCounters.impacts += 1;
-    if (source === "density-floor") eventCounters.densityFloorImpacts += 1;
   }
 
-  function spawnMeteor(strength = 0.72, source = "audio") {
+  function spawnMeteor(strength = 0.72) {
     const slot = meteors[meteorCursor++ % METEOR_SLOTS];
     const radius = FIELD_HALF * 0.72 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
@@ -1162,8 +869,6 @@
     slot.x = Math.cos(angle) * radius;
     slot.z = Math.sin(angle) * radius;
     slot.strength = clamp(strength, 0.25, 1);
-    eventCounters.meteors += 1;
-    if (source === "density-floor") eventCounters.densityFloorMeteors += 1;
   }
 
   function updateAudio(nowSeconds) {
@@ -1177,19 +882,12 @@
       [1180, 2200],
       [2200, 3500],
     ];
-    const analyserLive = Boolean(analyser && frequencyData);
-    const live = analyserLive || Boolean(testBandValues);
+    const live = Boolean(analyser && frequencyData);
 
-    if (analyserLive) {
+    if (live) {
       analyser.getByteFrequencyData(frequencyData);
       ranges.forEach(([from, to], index) => {
-        rawBandValues[index] = bandEnergy(from, to);
-        bandUniforms[index] = bandUniforms[index] * 0.58 + rawBandValues[index] * 0.42;
-      });
-    } else if (testBandValues) {
-      testBandValues.forEach((value, index) => {
-        rawBandValues[index] = clamp(Number(value) || 0);
-        bandUniforms[index] = bandUniforms[index] * 0.58 + rawBandValues[index] * 0.42;
+        bandUniforms[index] = bandUniforms[index] * 0.7 + bandEnergy(from, to) * 0.3;
       });
     } else {
       ranges.forEach((_, index) => {
@@ -1197,7 +895,6 @@
           0.045 +
           Math.max(0, Math.sin(time * (0.42 + index * 0.055) - index * 0.74)) *
             (0.025 + (7 - index) * 0.004);
-        rawBandValues[index] = wave;
         bandUniforms[index] = bandUniforms[index] * 0.9 + wave * 0.1;
       });
     }
@@ -1206,20 +903,13 @@
     const bass = bandUniforms[1] * 0.35 + bandUniforms[2] * 0.65;
     const lowMid = bandUniforms[3] * 0.66 + bandUniforms[4] * 0.34;
     const mid = bandUniforms[4] * 0.42 + bandUniforms[5] * 0.38 + bandUniforms[6] * 0.2;
-    let liveHigh;
-    if (analyserLive) {
-      liveHigh = bandEnergy(3500, 9500);
-    } else if (testBandValues) {
-      liveHigh = Math.max(testBandValues[7] || 0, (testBandValues[6] || 0) * 0.72);
-    } else {
-      liveHigh = 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
-    }
+    const liveHigh = live ? bandEnergy(3500, 9500) : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
 
     state.subBass = state.subBass * 0.76 + subBass * 0.24;
     state.bass = state.bass * 0.78 + bass * 0.22;
     state.lowMid = state.lowMid * 0.8 + lowMid * 0.2;
     state.mid = state.mid * 0.84 + mid * 0.16;
-    state.high = state.high * 0.76 + liveHigh * 0.24;
+    state.high = state.high * 0.86 + liveHigh * 0.14;
 
     if (state.syntheticStress) {
       state.subBass = 0.82;
@@ -1233,169 +923,70 @@
     }
 
     const lowMidEnergy = state.bass * 0.65 + state.lowMid * 0.92;
-    const rawSubBass = rawBandValues[0] * 0.74 + rawBandValues[1] * 0.26;
-    const rawLowMid =
-      rawBandValues[2] * 0.18 + rawBandValues[3] * 0.54 + rawBandValues[4] * 0.28;
-    const rawHigh = Math.max(
-      liveHigh,
-      rawBandValues[6] * 0.28 + rawBandValues[7] * 0.72,
-    );
-    const lowFlux = Math.max(0, rawLowMid - previousRawLowMid);
-    const subFlux = Math.max(0, rawSubBass - previousRawSubBass);
-    const highFlux = Math.max(0, rawHigh - previousRawHigh);
-    const lowStats = channelStats(lowMidHistory, rawLowMid || 0.03);
-    const subStats = channelStats(subBassHistory, rawSubBass || 0.025);
-    const highStats = channelStats(highHistory, rawHigh || 0.018);
-    const rippleThreshold = Math.max(0.035, lowStats.mean + lowStats.deviation * 0.28);
-    const impactThreshold = Math.max(0.032, subStats.mean + subStats.deviation * 0.38);
-    const meteorThreshold = Math.max(0.012, highStats.mean + highStats.deviation * 0.3);
-    const rippleTransient =
-      rawLowMid > rippleThreshold &&
-      lowFlux > Math.max(0.0032, lowStats.deviation * 0.1);
-    const subBassTransient =
-      rawSubBass > impactThreshold &&
-      subFlux > Math.max(0.0035, subStats.deviation * 0.12);
-    const fallbackImpact =
-      !subBassTransient &&
-      rawLowMid > lowStats.mean + lowStats.deviation * 0.62 &&
-      lowFlux > Math.max(0.005, lowStats.deviation * 0.16);
-    const meteorTransient =
-      rawHigh > meteorThreshold &&
-      highFlux > Math.max(0.0018, highStats.deviation * 0.1);
-    const tempoTransient =
-      rippleTransient ||
-      subBassTransient ||
-      (
-        rawLowMid > lowStats.mean + lowStats.deviation * 0.18 &&
-        lowFlux > Math.max(0.0042, lowStats.deviation * 0.13)
-      ) ||
-      (
-        rawSubBass > subStats.mean + subStats.deviation * 0.22 &&
-        subFlux > Math.max(0.0044, subStats.deviation * 0.15)
-      ) ||
-      (
-        rawLowMid > lowStats.mean &&
-        highFlux > Math.max(0.012, highStats.deviation * 0.45)
-      );
-    const rippleActive = rawLowMid > Math.max(0.024, lowStats.mean * 0.72);
-    const impactActive =
-      Math.max(rawSubBass, rawLowMid * 0.68) >
-      Math.max(0.025, Math.min(subStats.mean, lowStats.mean) * 0.7);
-    const meteorActive = rawHigh > Math.max(0.009, highStats.mean * 0.68);
-    const audible = rawLowMid > 0.012 || rawSubBass > 0.012 || rawHigh > 0.008;
-    const rippleFloor = clamp(
-      MOTION_TUNING.rippleDensityFloor - rawLowMid * 0.18,
-      0.5,
-      MOTION_TUNING.rippleDensityFloor,
-    );
+    const lowJump = lowMidEnergy - previousLowMid;
+    const subJump = state.subBass - previousSubBass;
+    const highJump = state.high - previousHigh;
+    energyHistory.push(lowMidEnergy);
+    if (energyHistory.length > 180) energyHistory.shift();
+    const mean = energyHistory.reduce((sum, value) => sum + value, 0) / energyHistory.length;
+    const variance =
+      energyHistory.reduce((sum, value) => sum + (value - mean) ** 2, 0) / energyHistory.length;
+    const deviation = Math.sqrt(variance);
+    const rippleThreshold = Math.max(0.13, mean + deviation * 0.72);
 
-    if (live && audible && tempoTransient) {
-      registerTempoOnset(
-        nowSeconds,
-        clamp(
-          0.2 +
-          rawLowMid * 0.82 +
-          rawSubBass * 0.5 +
-          lowFlux * 4.2 +
-          subFlux * 3.2 +
-          highFlux * 0.8,
-        ),
-      );
-    } else if (nowSeconds - lastTempoOnsetAt > 3.5) {
-      state.bpmConfidence *= 0.992;
-      if (state.bpmConfidence < 0.08 && nowSeconds - lastTempoOnsetAt > 8) {
-        state.bpm = 0;
+    if (
+      live &&
+      nowSeconds - lastRippleAt > 0.22 &&
+      lowMidEnergy > rippleThreshold &&
+      lowJump > 0.018
+    ) {
+      spawnRipple(clamp(lowMidEnergy * 1.38));
+      if (lastAudioAt > 0) {
+        const interval = nowSeconds - lastAudioAt;
+        if (interval > 0.28 && interval < 1.25) {
+          beatIntervals.push(interval);
+          if (beatIntervals.length > 14) beatIntervals.shift();
+          const sorted = [...beatIntervals].sort((a, b) => a - b);
+          const median = sorted[Math.floor(sorted.length / 2)];
+          const bpm = 60 / median;
+          state.bpm = bpm < 70 ? bpm * 2 : bpm > 170 ? bpm / 2 : bpm;
+        }
       }
+      lastAudioAt = nowSeconds;
+      lastRippleAt = nowSeconds;
     }
 
-    if (live && audible && nowSeconds - lastRippleAt > MOTION_TUNING.rippleCooldown) {
-      const densityFloorHit = rippleActive && nowSeconds - lastRippleAt > rippleFloor;
-      if (rippleTransient || densityFloorHit) {
-        spawnRipple(
-          clamp(0.24 + rawLowMid * 1.35 + lowFlux * 4.2),
-          densityFloorHit && !rippleTransient ? "density-floor" : "audio",
-        );
-        if (rippleTransient) lastAudioAt = nowSeconds;
-        lastRippleAt = nowSeconds;
-      }
+    const subBassHit = state.subBass > Math.max(0.2, mean * 0.92) && subJump > 0.026;
+    const fallbackHit =
+      !subBassHit && lowMidEnergy > mean + deviation * 1.35 && lowJump > 0.038;
+    if (live && nowSeconds - lastImpactAt > 0.52 && (subBassHit || fallbackHit)) {
+      spawnImpact(clamp((subBassHit ? state.subBass : lowMidEnergy) * 1.45));
+      lastImpactAt = nowSeconds;
     }
 
-    if (live && audible && nowSeconds - lastImpactAt > MOTION_TUNING.impactCooldown) {
-      const densityFloorHit =
-        impactActive && nowSeconds - lastImpactAt > MOTION_TUNING.impactDensityFloor;
-      if (subBassTransient || fallbackImpact || densityFloorHit) {
-        const sourceEnergy = subBassTransient ? rawSubBass : rawLowMid * 0.82;
-        spawnImpact(
-          clamp(0.26 + sourceEnergy * 1.55 + Math.max(subFlux, lowFlux) * 3.2),
-          undefined,
-          undefined,
-          densityFloorHit && !subBassTransient && !fallbackImpact
-            ? "density-floor"
-            : "audio",
-        );
-        lastImpactAt = nowSeconds;
-      }
+    if (live && nowSeconds - lastMeteorAt > 0.66 && state.high > 0.16 && highJump > 0.018) {
+      spawnMeteor(clamp(state.high * 1.65));
+      lastMeteorAt = nowSeconds;
     }
 
-    if (live && audible && nowSeconds - lastMeteorAt > MOTION_TUNING.meteorCooldown) {
-      const densityFloorHit =
-        meteorActive && nowSeconds - lastMeteorAt > MOTION_TUNING.meteorDensityFloor;
-      if (meteorTransient || densityFloorHit) {
-        spawnMeteor(
-          clamp(0.28 + rawHigh * 2.45 + highFlux * 5.2),
-          densityFloorHit && !meteorTransient ? "density-floor" : "audio",
-        );
-        lastMeteorAt = nowSeconds;
-      }
+    if (!live && nowSeconds - idlePulseAt > 3.2) {
+      spawnRipple(0.3);
+      if (Math.floor(nowSeconds / 7) !== Math.floor(idlePulseAt / 7)) spawnImpact(0.28);
+      idlePulseAt = nowSeconds;
     }
 
-    if (!live || !audible) {
-      if (nowSeconds - idlePulseAt > MOTION_TUNING.idleRippleInterval) {
-        spawnRipple(0.28, "idle");
-        idlePulseAt = nowSeconds;
-      }
-      if (nowSeconds - idleImpactAt > MOTION_TUNING.idleImpactInterval) {
-        spawnImpact(0.3, undefined, undefined, "idle");
-        idleImpactAt = nowSeconds;
-      }
-      if (nowSeconds - idleMeteorAt > MOTION_TUNING.idleMeteorInterval) {
-        spawnMeteor(0.32, "idle");
-        idleMeteorAt = nowSeconds;
-      }
-    }
-
-    recordChannel(lowMidHistory, rawLowMid);
-    recordChannel(subBassHistory, rawSubBass);
-    recordChannel(highHistory, rawHigh);
-    previousRawLowMid = rawLowMid;
-    previousRawSubBass = rawSubBass;
-    previousRawHigh = rawHigh;
-    Object.assign(motionDebug, {
-      rawLowMid,
-      rawSubBass,
-      rawHigh,
-      lowFlux,
-      subFlux,
-      highFlux,
-      rippleThreshold,
-      impactThreshold,
-      meteorThreshold,
-      audible,
-    });
+    previousLowMid = lowMidEnergy;
+    previousSubBass = state.subBass;
+    previousHigh = state.high;
 
     coreUniforms.uBass.value = state.bass;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
-    atmosphereUniforms.uBass.value = state.bass;
-    atmosphereUniforms.uMid.value = state.mid;
     atmosphereUniforms.uHigh.value = state.high;
     dom.bassReadout.textContent = state.bass.toFixed(2);
     dom.midReadout.textContent = state.mid.toFixed(2);
     dom.highReadout.textContent = state.high.toFixed(2);
-    dom.bpmReadout.textContent =
-      state.bpm && state.bpmConfidence > 0.18
-        ? `${Math.round(state.bpm)}${state.bpmConfidence < 0.42 ? "?" : ""}`
-        : "--";
+    dom.bpmReadout.textContent = state.bpm ? String(Math.round(state.bpm)) : "--";
   }
 
   function updateEvents(delta) {
@@ -1516,13 +1107,6 @@
       rotationTarget = (bpm / 60) * (0.012 + state.speed * 0.034);
       rotation += delta * rotationTarget;
       state.morph += (state.morphTarget - state.morph) * Math.min(1, delta * 2.8);
-      if (sceneTransition < 1) {
-        sceneTransition = clamp(
-          (now / 1000 - sceneTransitionStartedAt) / sceneTransitionDuration,
-        );
-      }
-      cameraDollyPulse *= Math.exp(-delta * 3.6);
-      cameraCutOffset *= Math.exp(-delta * 0.72);
     }
 
     coreUniforms.uTime.value = time;
@@ -1534,8 +1118,6 @@
     coreUniforms.uMode.value = state.mode === "form" ? 1 : 0;
     coreUniforms.uMorph.value = state.morph;
     coreUniforms.uEffect.value = state.effect;
-    coreUniforms.uSceneStyle.value = state.scene;
-    coreUniforms.uSceneTransition.value = sceneTransition;
     coreUniforms.uEffectAmount.value +=
       ((state.mode === "form" && state.effect > 0 ? 1 : 0) -
         coreUniforms.uEffectAmount.value) *
@@ -1544,7 +1126,6 @@
     atmosphereUniforms.uIntensity.value = state.intensity;
     atmosphereUniforms.uHue.value = state.hue;
     postUniforms.uTime.value = time;
-    postUniforms.uSceneStyle.value = state.scene;
 
     coreField.visible = !state.blackout;
     atmosphere.visible = !state.blackout;
@@ -1554,35 +1135,12 @@
       (desiredCoreRotation - coreField.rotation.y) * Math.min(1, delta * 3.6);
     atmosphere.rotation.y = rotation * 0.58;
 
-    const cameraPreset = SCENE_PRESETS[state.scene].camera;
-    const bpmPhase = time * ((state.bpm || 72) / 60);
-    const orbit =
-      (pointerX - 0.5) * 0.32 +
-      Math.sin(bpmPhase * 0.32 + state.scene) * (0.05 + state.scene * 0.006) +
-      cameraCutOffset;
-    const targetX = cameraPreset[0] + Math.sin(orbit) * 8.5;
-    const targetY =
-      cameraPreset[1] +
-      (0.5 - pointerY) * 2.2 +
-      Math.sin(bpmPhase * 0.18) * 0.42;
-    const targetZ =
-      cameraPreset[2] +
-      Math.cos(orbit) * 1.3 -
-      cameraDollyPulse * (2.2 + state.bass * 1.8);
-    const cameraEase = Math.min(1, delta * (state.scene === 0 ? 2.2 : 1.6));
-    if (cameraCutPending) {
-      camera.position.set(targetX, targetY, targetZ);
-      cameraCutPending = false;
-    } else {
-      camera.position.x += (targetX - camera.position.x) * cameraEase;
-      camera.position.y += (targetY - camera.position.y) * cameraEase;
-      camera.position.z += (targetZ - camera.position.z) * cameraEase;
-    }
-    camera.lookAt(
-      Math.sin(bpmPhase * 0.22 + state.scene) * 0.7,
-      1.3 + state.bass * 1.4,
-      Math.cos(bpmPhase * 0.17) * 0.55,
-    );
+    const orbit = (pointerX - 0.5) * 0.28;
+    const height = 9.6 + (0.5 - pointerY) * 2.2;
+    camera.position.x += (Math.sin(orbit) * 11 - camera.position.x) * 0.035;
+    camera.position.y += (height - camera.position.y) * 0.035;
+    camera.position.z += (27.5 + Math.cos(orbit) * 1.4 - camera.position.z) * 0.035;
+    camera.lookAt(0, 1.3 + state.bass * 1.4, 0);
 
     renderFrame();
     updatePerformance(now, delta);
@@ -1624,7 +1182,7 @@
   }
 
   function applyTextForm() {
-    const label = (dom.particleText.value.trim() || "ARE").toUpperCase();
+    const label = (dom.particleText.value.trim() || "ECHO").toUpperCase();
     formContext.clearRect(0, 0, FORM_CANVAS_SIZE, FORM_CANVAS_SIZE);
     formContext.fillStyle = "#ffffff";
     formContext.textAlign = "center";
@@ -1806,13 +1364,6 @@
       ripples: ripples.length,
       impacts: impacts.length,
       meteors: meteors.filter((meteor) => meteor.active).length,
-      eventCounters: { ...eventCounters },
-      motion: { ...motionDebug },
-      bpm: state.bpm,
-      bpmConfidence: state.bpmConfidence,
-      scene: state.scene,
-      sceneName: SCENE_PRESETS[state.scene].name,
-      sceneTransition,
       renderer: renderer.info.render,
     }),
     stress: (enabled = true) => {
@@ -1829,37 +1380,12 @@
     ripple: spawnRipple,
     impact: spawnImpact,
     meteor: spawnMeteor,
-    resetCounters: () => {
-      Object.keys(eventCounters).forEach((key) => {
-        eventCounters[key] = 0;
-      });
-      return { ...eventCounters };
-    },
-    feedBands: (values) => {
-      if (values == null) {
-        testBandValues = null;
-        return null;
-      }
-      testBandValues = Array.from({ length: 8 }, (_, index) =>
-        clamp(Number(values[index]) || 0),
-      );
-      return [...testBandValues];
-    },
-    tuning: MOTION_TUNING,
     quality: (name) => configureQuality(name),
-    scene: setScene,
     mode: setMode,
     effect: setEffect,
-    tempoOnset: registerTempoOnset,
-    resetTempo: () => {
-      beatOnsets.length = 0;
-      lastTempoOnsetAt = -10;
-      state.bpm = 0;
-      state.bpmConfidence = 0;
-    },
   };
 
-  configureQuality("laptop");
+  configureQuality("m1");
   setScene(0, false);
   setEffect(0);
   setMode("range");
