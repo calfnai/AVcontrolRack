@@ -567,19 +567,27 @@ h3 {
   padding-top: 28px;
 }
 
-.legal-stack details {
+.legal-stack details,
+.author-card {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.025);
 }
 
-.legal-stack summary {
+.legal-stack summary,
+.author-card h3 {
   cursor: pointer;
+  margin: 0;
   padding: 16px 18px;
   color: var(--paper);
+  font-family: inherit;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.author-card h3 {
+  cursor: default;
 }
 
 .legal-stack p {
@@ -589,6 +597,12 @@ h3 {
   font-family: var(--sans);
   font-size: 14px;
   line-height: 1.8;
+}
+
+.legal-stack a {
+  color: var(--paper);
+  text-decoration-color: var(--pink);
+  text-underline-offset: 4px;
 }
 
 .colophon {
