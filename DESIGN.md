@@ -66,16 +66,16 @@ There is movement even in silence. The idle field is not a screensaver waiting f
 
 ## A-H Scene Memory
 
-- **A / RANGE ECHO** — central low-mid pressure and outward ripple.
-- **B / WHITE HEAT FIELD** — overexposed threshold, rim, impact feedback.
-- **C / AVIAN CONSTELLATION** — high-frequency directional traces and flock-like constellations.
-- **D / PITCH ARCHITECTURE** — bands as ribs, columns and vertical spatial order.
-- **E / ORGANIC CARTOGRAPHY** — contour, terrain, soft tissue and tidal deformation.
-- **F / GROWTH INSTRUMENT** — warm accumulation, opening, closing and growth.
-- **G / PARTICLE FORM** — text, image and SVG in the shared particle pool.
-- **H / DEEP TRANSIT** — deep field, corridor, distance and dark blue-violet travel.
+- **A / RANGE ECHO**
+- **B / SILK CURRENT**
+- **C / LIQUID LENS**
+- **D / ORBITAL**
+- **E / AURORA**
+- **F / MONOLITH**
+- **G / SOLAR BLOOM**
+- **H / DEEP SPACE**
 
-A-H 是空间语法，不只是换色。
+A-H 保留原先 scene memory。参数数值变化不占用 A-H；使用 RND 或手动滑杆完成。
 
 ## The Interface as a Protocol of Attention
 

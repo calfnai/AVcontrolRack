@@ -66,13 +66,13 @@
 
   const SCENE_NAMES = [
     "RANGE ECHO",
-    "WHITE HEAT FIELD",
-    "AVIAN CONSTELLATION",
-    "PITCH ARCHITECTURE",
-    "ORGANIC CARTOGRAPHY",
-    "GROWTH INSTRUMENT",
-    "PARTICLE FORM",
-    "DEEP TRANSIT",
+    "SILK CURRENT",
+    "LIQUID LENS",
+    "ORBITAL",
+    "AURORA",
+    "MONOLITH",
+    "SOLAR BLOOM",
+    "DEEP SPACE",
   ];
 
   const dom = Object.fromEntries(
@@ -697,20 +697,6 @@
     sceneButtons.forEach((button) =>
       button.classList.toggle("active", Number(button.dataset.scene) === state.scene),
     );
-    const presets = [
-      { hue: 0.9, warp: 0.42, feedback: 0.58 },
-      { hue: 0.74, warp: 0.56, feedback: 0.72 },
-      { hue: 0.98, warp: 0.24, feedback: 0.46 },
-      { hue: 0.62, warp: 0.72, feedback: 0.64 },
-      { hue: 0.84, warp: 0.34, feedback: 0.82 },
-      { hue: 0.7, warp: 0.68, feedback: 0.5 },
-      { hue: 1, warp: 0.18, feedback: 0.68 },
-      { hue: 0.8, warp: 0.48, feedback: 0.9 },
-    ];
-    const preset = presets[state.scene];
-    setParam("hue", preset.hue, false);
-    setParam("warp", preset.warp, false);
-    setParam("feedback", preset.feedback, false);
     updateModeLabel();
     if (shouldSend) sendParam("scene", state.scene);
   }
@@ -771,7 +757,7 @@
     setText(".rack h2", "CONTROL", "控制");
     setText(".control-section:nth-of-type(1) .section-label", "INPUT", "输入");
     setText(".help-section .section-label", "I/O NOTES", "输入输出说明");
-    setText(".control-section:nth-of-type(3) .section-label", "SCENE MEMORY V2", "场景记忆 V2");
+    setText(".control-section:nth-of-type(3) .section-label", "SCENE MEMORY", "场景记忆");
     setText(".control-section:nth-of-type(4) .section-label", "PARTICLE FORM", "粒子形态");
     setText(".quality-section .section-label", "PERFORMANCE MODE", "性能档位");
     setText(".sliders .section-label", "FIELD", "场域参数");
@@ -779,8 +765,8 @@
       ? "SoundCloud 是试听源，不是 iframe FFT。如需真实分析，请用 BlackHole 或其他系统音频路由作为 MIC 输入。"
       : "SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.";
     document.querySelector("#sceneHelp").textContent = zh
-      ? "A-H 是八种空间语法，不只是八组颜色。"
-      : "A-H are scene memories: eight spatial grammars, not only eight colour presets.";
+      ? "A-H 恢复原先 scene memory。参数变化请用 RND 或滑杆。"
+      : "A-H recall the original scene memories. Use RND or the sliders for parameter changes.";
     updateModeLabel();
   }
 
@@ -1482,12 +1468,6 @@
   }
 
   sliders.forEach((slider) => {
-    const label = slider.closest("label");
-    const helper = label?.querySelector("small")?.textContent?.trim();
-    if (helper) {
-      slider.title = helper;
-      label.title = helper;
-    }
     slider.addEventListener("input", () => setParam(slider.dataset.param, slider.value));
   });
   sceneButtons.forEach((button) => {

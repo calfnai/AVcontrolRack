@@ -19,7 +19,7 @@ V2 合并了此前讨论但没有稳定露出的网页版本能力：
 
 - 生产页明确命名为 `Range Echo V2`。
 - `SAMPLE` 演示模式提供可直接试玩的内置节奏驱动画面。
-- `SCENE MEMORY V2` 给 A-H 场景补回语义 title。
+- `SCENE MEMORY` 保留原先 A-H scene，参数随机变化交给 `RND`。
 - `PERFORMANCE MODE` 使用 STABLE / LAPTOP / HIGH 三档，而不是只写 M1。
 - 控制抽屉补回 MIDI / OSC 的最小 I/O 说明。
 - Particle Form 默认文本使用 `ARE`，并继续支持文字、图片和 SVG。
@@ -80,7 +80,7 @@ npm start
 - `BLACK`：黑场。
 - `FREEZE`：冻结视觉状态。
 - `RND`：在受控范围内随机化参数。
-- `A–H`：Range Echo、White Heat Field、Avian Constellation、Pitch Architecture、Organic Cartography、Growth Instrument、Particle Form、Deep Transit。
+- `A–H`：Range Echo、Silk Current、Liquid Lens、Orbital、Aurora、Monolith、Solar Bloom、Deep Space。A-H 不改写 slider 数值；数值变化使用 `RND` 或手动滑杆。
 
 切换场景时，同一个粒子池会经历收拢、涡旋和重新展开；不会重建场景或增加额外绘制。各场景也使用不同机位、连续环绕、节拍推进和受置信度约束的强拍硬切。
 
