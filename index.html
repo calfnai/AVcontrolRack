@@ -82,6 +82,7 @@
             <label class="command file-command" for="audioInput">AUDIO</label>
             <input id="audioInput" class="hidden-input" type="file" accept="audio/*" />
             <button id="sampleToggle" class="command" type="button">SAMPLE</button>
+            <button id="auditionToggle" class="command" type="button">LISTEN</button>
             <button id="echoToggle" class="command active" type="button">ECHO</button>
             <button id="blackoutToggle" class="command" type="button">BLACK</button>
             <button id="freezeToggle" class="command" type="button">FREEZE</button>
@@ -90,6 +91,18 @@
           <div id="samplePlayer" class="sample-player" aria-hidden="true">
             <span>SAMPLE DRIVE</span>
             <b>SYNTHETIC LOW-MID / HIGH TRANSIENTS</b>
+          </div>
+          <div id="auditionPlayer" class="audition-player" aria-hidden="true">
+            <div class="audition-head">
+              <span>LISTENING REFERENCE</span>
+              <a href="https://soundcloud.com/calfn/unexpected-round-life" target="_blank" rel="noreferrer">OPEN ↗</a>
+            </div>
+            <iframe
+              title="Unexpected Round Life on SoundCloud"
+              loading="lazy"
+              allow="autoplay"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/calfn/unexpected-round-life&color=%23ff4bbb&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false"
+            ></iframe>
           </div>
         </section>
 

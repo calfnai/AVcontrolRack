@@ -76,6 +76,8 @@
       "audioInput",
       "sampleToggle",
       "samplePlayer",
+      "auditionToggle",
+      "auditionPlayer",
       "echoToggle",
       "blackoutToggle",
       "freezeToggle",
@@ -871,6 +873,13 @@
     updateModeLabel();
   }
 
+  function toggleAuditionPlayer() {
+    const nextOpen = !dom.auditionPlayer.classList.contains("active");
+    dom.auditionPlayer.classList.toggle("active", nextOpen);
+    dom.auditionPlayer.setAttribute("aria-hidden", String(!nextOpen));
+    dom.auditionToggle.classList.toggle("active", nextOpen);
+  }
+
   function handleAudioError(error) {
     const label = describeAudioError(error);
     setStatus(dom.audioStatus, `${label} / TRY SAMPLE`, false);
@@ -1384,6 +1393,7 @@
     }
     startSampleDemo();
   });
+  dom.auditionToggle.addEventListener("click", toggleAuditionPlayer);
   dom.echoToggle.addEventListener("click", () => {
     state.echo = !state.echo;
     dom.echoToggle.classList.toggle("active", state.echo);

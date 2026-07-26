@@ -75,6 +75,7 @@ npm start
 - `MIC`：请求麦克风。
 - `AUDIO`：选择本地音频文件。
 - `SAMPLE`：启动内置演示频段，不依赖麦克风、音频文件或第三方播放器。
+- `LISTEN`：展开 SoundCloud 试听，使用 `https://soundcloud.com/calfn/unexpected-round-life`。
 - `ECHO`：启用或暂停中低频扩散波。
 - `BLACK`：黑场。
 - `FREEZE`：冻结视觉状态。
