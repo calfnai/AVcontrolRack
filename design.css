@@ -70,9 +70,29 @@ a {
   box-shadow: 0 0 16px var(--pink);
 }
 
-.live-link {
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.live-link,
+.lang-button {
   padding-bottom: 4px;
   border-bottom: 1px solid var(--pink);
+}
+
+.lang-button {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
 }
 
 .hero {
@@ -115,13 +135,15 @@ a {
 h1 {
   margin: 14px 0 0;
   max-width: 720px;
-  color: rgba(255, 248, 254, 0.92);
+  color: rgba(255, 248, 254, 0.52);
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(92px, 16vw, 250px);
   font-weight: 900;
   letter-spacing: -0.075em;
   line-height: 0.68;
   mix-blend-mode: screen;
+  opacity: 0.78;
+  text-shadow: 0 0 36px rgba(255, 75, 187, 0.12);
   transform: scale(1.08, 0.86);
   transform-origin: top left;
   -webkit-text-stroke: 0.8px currentColor;
@@ -532,8 +554,41 @@ h3 {
 }
 
 .return-link:hover,
-.live-link:hover {
+.live-link:hover,
+.lang-button:hover {
   color: var(--pink);
+}
+
+.legal-stack {
+  display: grid;
+  gap: 10px;
+  margin: clamp(64px, 9vw, 130px) 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+}
+
+.legal-stack details {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.legal-stack summary {
+  cursor: pointer;
+  padding: 16px 18px;
+  color: var(--paper);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.legal-stack p {
+  margin: 0;
+  padding: 0 18px 18px;
+  color: #c8bbc6;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .colophon {

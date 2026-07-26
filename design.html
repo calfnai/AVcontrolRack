@@ -22,7 +22,10 @@
         <span class="brand-dot"></span>
         RANGE ECHO V2 / CALFN LAU
       </a>
-      <a class="live-link" href="index.html">ENTER THE FIELD ↗</a>
+      <div class="head-actions">
+        <button id="languageToggle" class="lang-button" type="button">中文</button>
+        <a class="live-link" href="index.html">ENTER THE FIELD ↗</a>
+      </div>
     </header>
 
     <main>
@@ -272,6 +275,51 @@
           <p class="cn-note">事件退场，后果仍在。</p>
           <a class="return-link" href="index.html">RETURN TO THE FIELD ↗</a>
         </footer>
+
+        <section class="legal-stack" aria-label="Credits and notices">
+          <details open>
+            <summary>Author / CALFN LAU</summary>
+            <p>
+              CALFN LAU is a user experience designer working across interface systems,
+              live visuals and audiovisual prototypes. Range Echo treats UX not as the smoothing
+              of friction, but as the choreography of attention: when to expose control, when to
+              withdraw it, and when to let the image hold authority.
+            </p>
+          </details>
+          <details>
+            <summary>Credits / References</summary>
+            <p>
+              Visual and interaction references include audio-reactive wallpaper systems,
+              Particleify-style browser particle fields, live AV rack conventions, Web Audio
+              analysis patterns and Three.js / GLSL point-sprite rendering. These references are
+              research context, not copied source material.
+            </p>
+          </details>
+          <details>
+            <summary>Disclaimer</summary>
+            <p>
+              Range Echo is an experimental audiovisual web work. Performance depends on browser,
+              GPU, display scale, microphone permissions and audio routing. It is provided without
+              warranty of uninterrupted playback, BPM accuracy or compatibility with every device.
+            </p>
+          </details>
+          <details>
+            <summary>Privacy / Data Collection</summary>
+            <p>
+              The static GitHub Pages version does not upload microphone audio, selected audio files,
+              images or SVG assets to a project server. Analysis happens in the browser session.
+              Hosting platforms may still collect standard access logs.
+            </p>
+          </details>
+          <details>
+            <summary>EULA / Use</summary>
+            <p>
+              You may view and perform with the public web version as an artwork prototype. Do not
+              represent it as your own authorship, resell it as a separate commercial product, or
+              imply endorsement by CALFN LAU.
+            </p>
+          </details>
+        </section>
       </article>
 
       <footer class="colophon">
@@ -280,5 +328,22 @@
         <span>2026</span>
       </footer>
     </main>
+    <script>
+      const key = "rangeEchoLanguage";
+      const button = document.querySelector("#languageToggle");
+      const liveLink = document.querySelector(".live-link");
+      const returnLink = document.querySelector(".return-link");
+      function applyLanguage(language) {
+        localStorage.setItem(key, language);
+        document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+        button.textContent = language === "zh" ? "EN" : "中文";
+        liveLink.textContent = language === "zh" ? "进入现场场域 ↗" : "ENTER THE FIELD ↗";
+        returnLink.textContent = language === "zh" ? "回到现场场域 ↗" : "RETURN TO THE FIELD ↗";
+      }
+      button.addEventListener("click", () => {
+        applyLanguage((localStorage.getItem(key) || "en") === "zh" ? "en" : "zh");
+      });
+      applyLanguage(localStorage.getItem(key) || "en");
+    </script>
   </body>
 </html>

@@ -8,6 +8,10 @@ V2 fixes the work's public identity around a browser-first audio-responsive fiel
 
 V2 把网页试玩、现场输入和性能边界收束到同一个作品版本里。
 
+`SAMPLE` and `LISTEN` are separate acts. SAMPLE is an internal visual driver; LISTEN is the SoundCloud reference track and may be routed through BlackHole or another system-audio device if the user wants it analysed through the normal input chain. A microphone failure must explain permission, HTTPS, device absence or device conflict; it must not advertise SAMPLE as if the two states were the same problem.
+
+SAMPLE 驱动画面；LISTEN 试听音乐。麦克风失败不提示 TRY SAMPLE。
+
 > Audibility does not become image. It returns as evidence of a force already withdrawn.
 
 可听之物不被图像化，只留下退场后的证据。
@@ -59,6 +63,19 @@ Tempo is not used as a command to synchronise everything. It establishes a clima
 There is movement even in silence. The idle field is not a screensaver waiting for content; it is a dormant body. It breathes just enough to suggest that sound has not created the space, only awakened it.
 
 低频有重量，中频有结构，高频有速度；静默也仍然呼吸。
+
+## A-H Scene Memory
+
+- **A / RANGE ECHO** — central low-mid pressure and outward ripple.
+- **B / WHITE HEAT FIELD** — overexposed threshold, rim, impact feedback.
+- **C / AVIAN CONSTELLATION** — high-frequency directional traces and flock-like constellations.
+- **D / PITCH ARCHITECTURE** — bands as ribs, columns and vertical spatial order.
+- **E / ORGANIC CARTOGRAPHY** — contour, terrain, soft tissue and tidal deformation.
+- **F / GROWTH INSTRUMENT** — warm accumulation, opening, closing and growth.
+- **G / PARTICLE FORM** — text, image and SVG in the shared particle pool.
+- **H / DEEP TRANSIT** — deep field, corridor, distance and dark blue-violet travel.
+
+A-H 是空间语法，不只是换色。
 
 ## The Interface as a Protocol of Attention
 

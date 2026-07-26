@@ -22,6 +22,7 @@
             <h1>RANGE<br />ECHO</h1>
           </div>
           <nav class="header-actions" aria-label="Project links">
+            <button id="languageToggle" class="language-toggle" type="button">中文</button>
             <a class="design-link" href="design.html">DESIGN NOTE</a>
             <button
               id="panelToggle"
@@ -103,6 +104,9 @@
               allow="autoplay"
               src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/calfn/unexpected-round-life&color=%23ff4bbb&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false"
             ></iframe>
+            <p id="auditionHelp" class="control-help">
+              SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.
+            </p>
           </div>
         </section>
 
@@ -123,15 +127,16 @@
         <section class="control-section">
           <p class="section-label">SCENE MEMORY V2</p>
           <div class="scene-bank" aria-label="Scene bank">
-            <button class="scene active" data-scene="0" title="Range Echo" type="button">A</button>
-            <button class="scene" data-scene="1" title="Silk Current" type="button">B</button>
-            <button class="scene" data-scene="2" title="Liquid Lens" type="button">C</button>
-            <button class="scene" data-scene="3" title="Orbital" type="button">D</button>
-            <button class="scene" data-scene="4" title="Aurora" type="button">E</button>
-            <button class="scene" data-scene="5" title="Monolith" type="button">F</button>
-            <button class="scene" data-scene="6" title="Solar Bloom" type="button">G</button>
-            <button class="scene" data-scene="7" title="Deep Space" type="button">H</button>
+            <button class="scene active" data-scene="0" title="RANGE ECHO — low-mid centre ripples" type="button">A</button>
+            <button class="scene" data-scene="1" title="WHITE HEAT FIELD — overexposed impact edges" type="button">B</button>
+            <button class="scene" data-scene="2" title="AVIAN CONSTELLATION — high-frequency directional traces" type="button">C</button>
+            <button class="scene" data-scene="3" title="PITCH ARCHITECTURE — vertical band structures" type="button">D</button>
+            <button class="scene" data-scene="4" title="ORGANIC CARTOGRAPHY — contour and terrain drift" type="button">E</button>
+            <button class="scene" data-scene="5" title="GROWTH INSTRUMENT — warm accumulating energy" type="button">F</button>
+            <button class="scene" data-scene="6" title="PARTICLE FORM — text/image/SVG morph field" type="button">G</button>
+            <button class="scene" data-scene="7" title="DEEP TRANSIT — long-depth travelling space" type="button">H</button>
           </div>
+          <p id="sceneHelp" class="control-help">A-H are scene memories: eight spatial grammars, not only eight colour presets.</p>
         </section>
 
         <section class="control-section">
@@ -168,34 +173,42 @@
           <label>
             <span>Speed</span>
             <input type="range" min="0" max="1" step="0.001" value="0.32" data-param="speed" />
+            <small>Time speed, disk rotation and camera push.</small>
           </label>
           <label>
             <span>Density</span>
             <input type="range" min="0" max="1" step="0.001" value="0.72" data-param="density" />
+            <small>Visible point density; it does not exceed the M1 particle budget.</small>
           </label>
           <label>
             <span>Feedback</span>
             <input type="range" min="0" max="1" step="0.001" value="0.58" data-param="feedback" />
+            <small>Ripple, impact and aftershock lifetime.</small>
           </label>
           <label>
             <span>Warp</span>
             <input type="range" min="0" max="1" step="0.001" value="0.42" data-param="warp" />
+            <small>Spatial bending, drift and surface deformation.</small>
           </label>
           <label>
             <span>Size</span>
             <input type="range" min="0" max="1" step="0.001" value="0.48" data-param="size" />
+            <small>Point sprite / light needle size, not particle count.</small>
           </label>
           <label>
             <span>Audio Gain</span>
             <input type="range" min="0" max="1" step="0.001" value="0.7" data-param="audioGain" />
+            <small>Input gain before FFT and event detection.</small>
           </label>
           <label>
             <span>Hue</span>
             <input type="range" min="0" max="1" step="0.001" value="0.9" data-param="hue" />
+            <small>Hue shift inside the current scene palette.</small>
           </label>
           <label>
             <span>Intensity</span>
             <input type="range" min="0" max="1" step="0.001" value="0.8" data-param="intensity" />
+            <small>Glow, white heat and audio response strength.</small>
           </label>
         </section>
 

@@ -57,10 +57,23 @@
     subBass: 0,
     lowMid: 0,
     bpm: 0,
+    bpmConfidence: 0,
     fps: 0,
     p95: 0,
     syntheticStress: false,
+    language: localStorage.getItem("rangeEchoLanguage") || "en",
   };
+
+  const SCENE_NAMES = [
+    "RANGE ECHO",
+    "WHITE HEAT FIELD",
+    "AVIAN CONSTELLATION",
+    "PITCH ARCHITECTURE",
+    "ORGANIC CARTOGRAPHY",
+    "GROWTH INSTRUMENT",
+    "PARTICLE FORM",
+    "DEEP TRANSIT",
+  ];
 
   const dom = Object.fromEntries(
     [
@@ -78,6 +91,8 @@
       "samplePlayer",
       "auditionToggle",
       "auditionPlayer",
+      "auditionHelp",
+      "languageToggle",
       "echoToggle",
       "blackoutToggle",
       "freezeToggle",
@@ -614,7 +629,8 @@
   let previousHigh = 0;
   let rotation = 0;
   let rotationTarget = 0;
-  const beatIntervals = [];
+  let lastSampleTempoBeat = -10;
+  const beatOnsets = [];
   const energyHistory = [];
   const frameTimes = [];
   let statsUpdatedAt = 0;
@@ -695,6 +711,7 @@
     setParam("hue", preset.hue, false);
     setParam("warp", preset.warp, false);
     setParam("feedback", preset.feedback, false);
+    updateModeLabel();
     if (shouldSend) sendParam("scene", state.scene);
   }
 
@@ -717,11 +734,54 @@
   }
 
   function updateModeLabel() {
-    const audioLabel = sampleDemoActive ? "SAMPLE AUDIO" : analyser ? "LIVE AUDIO" : "IDLE";
+    const audioLabel = sampleDemoActive ? "SAMPLE" : analyser ? "LIVE AUDIO" : "IDLE";
     dom.modeLabel.textContent =
       state.mode === "form"
         ? `PARTICLE FORM / ${state.particleLabel || "ARE"}`
-        : `RANGE FIELD / ${audioLabel}`;
+        : `${SCENE_NAMES[state.scene] || "RANGE FIELD"} / ${audioLabel}`;
+  }
+
+  function applyLanguage(language) {
+    state.language = language === "zh" ? "zh" : "en";
+    localStorage.setItem("rangeEchoLanguage", state.language);
+    document.documentElement.lang = state.language === "zh" ? "zh-CN" : "en";
+    const zh = state.language === "zh";
+    const setText = (selector, en, cn) => {
+      const element = document.querySelector(selector);
+      if (element) element.textContent = zh ? cn : en;
+    };
+    if (dom.languageToggle) {
+      dom.languageToggle.textContent = zh ? "EN" : "中文";
+      dom.languageToggle.title = zh ? "Switch to English" : "切换到中文";
+    }
+    setText(".design-link", "DESIGN NOTE", "设计说明");
+    dom.panelToggle.querySelector("span").textContent = zh ? "控制" : "CONTROL";
+    setText("#audioToggle", "MIC", "麦克风");
+    setText("label[for='audioInput']", "AUDIO", "音频");
+    setText("#sampleToggle", "SAMPLE", "样本");
+    setText("#auditionToggle", "LISTEN", "试听");
+    setText("#echoToggle", "ECHO", "回响");
+    setText("#blackoutToggle", "BLACK", "黑场");
+    setText("#freezeToggle", "FREEZE", "冻结");
+    setText("#randomize", "RND", "随机");
+    setText("#textParticle", "TEXT", "文字");
+    setText("label[for='imageInput']", "IMAGE / SVG", "图片 / SVG");
+    setText("#clearParticle", "CLEAR", "清除");
+    setText(".rack-head .eyebrow", "LIVE PARAMETERS", "现场参数");
+    setText(".rack h2", "CONTROL", "控制");
+    setText(".control-section:nth-of-type(1) .section-label", "INPUT", "输入");
+    setText(".help-section .section-label", "I/O NOTES", "输入输出说明");
+    setText(".control-section:nth-of-type(3) .section-label", "SCENE MEMORY V2", "场景记忆 V2");
+    setText(".control-section:nth-of-type(4) .section-label", "PARTICLE FORM", "粒子形态");
+    setText(".quality-section .section-label", "PERFORMANCE MODE", "性能档位");
+    setText(".sliders .section-label", "FIELD", "场域参数");
+    dom.auditionHelp.textContent = zh
+      ? "SoundCloud 是试听源，不是 iframe FFT。如需真实分析，请用 BlackHole 或其他系统音频路由作为 MIC 输入。"
+      : "SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.";
+    document.querySelector("#sceneHelp").textContent = zh
+      ? "A-H 是八种空间语法，不只是八组颜色。"
+      : "A-H are scene memories: eight spatial grammars, not only eight colour presets.";
+    updateModeLabel();
   }
 
   async function sendParam(name, value) {
@@ -882,8 +942,66 @@
 
   function handleAudioError(error) {
     const label = describeAudioError(error);
-    setStatus(dom.audioStatus, `${label} / TRY SAMPLE`, false);
-    dom.sampleToggle.classList.add("primary");
+    setStatus(dom.audioStatus, label, false);
+  }
+
+  function normalizeTempo(bpm) {
+    let value = bpm;
+    while (value < 72) value *= 2;
+    while (value > 168) value /= 2;
+    return value;
+  }
+
+  function registerTempoOnset(nowSeconds, strength = 1) {
+    if (beatOnsets.length && nowSeconds - beatOnsets[beatOnsets.length - 1].time < 0.24) return;
+    beatOnsets.push({ time: nowSeconds, strength: clamp(strength, 0.12, 1) });
+    while (beatOnsets.length > 36 || nowSeconds - beatOnsets[0].time > 18) beatOnsets.shift();
+    if (beatOnsets.length < 5) return;
+
+    const bins = new Float32Array(193);
+    for (let end = 1; end < beatOnsets.length; end += 1) {
+      for (let gap = 1; gap <= 4 && end - gap >= 0; gap += 1) {
+        const interval = beatOnsets[end].time - beatOnsets[end - gap].time;
+        if (interval < 0.25 || interval > 3.4) continue;
+        const candidate = normalizeTempo((60 * gap) / interval);
+        const center = Math.round((candidate - 72) * 2);
+        const recency = 0.55 + (end / beatOnsets.length) * 0.45;
+        const weight =
+          Math.sqrt(beatOnsets[end].strength * beatOnsets[end - gap].strength) *
+          recency /
+          Math.sqrt(gap);
+        for (let offset = -3; offset <= 3; offset += 1) {
+          const bin = center + offset;
+          if (bin >= 0 && bin < bins.length) bins[bin] += weight * Math.exp((-offset * offset) / 3.2);
+        }
+      }
+    }
+
+    let bestIndex = 0;
+    let bestScore = 0;
+    let totalScore = 0;
+    bins.forEach((score, index) => {
+      const candidate = 72 + index * 0.5;
+      const continuity =
+        state.bpm > 0 ? Math.exp(-Math.abs(candidate - state.bpm) / 16) * 0.18 + 0.82 : 1;
+      const adjusted = score * continuity;
+      totalScore += adjusted;
+      if (adjusted > bestScore) {
+        bestScore = adjusted;
+        bestIndex = index;
+      }
+    });
+
+    const estimate = 72 + bestIndex * 0.5;
+    const confidence = clamp((bestScore / Math.max(0.001, totalScore)) * 9.5);
+    state.bpmConfidence = state.bpmConfidence * 0.7 + confidence * 0.3;
+    if (state.bpmConfidence <= 0.2) return;
+    if (!state.bpm) state.bpm = estimate;
+    else {
+      const delta = estimate - state.bpm;
+      const safeDelta = Math.abs(delta) > 24 && state.bpmConfidence < 0.58 ? 0 : delta;
+      state.bpm += safeDelta * (0.08 + state.bpmConfidence * 0.16);
+    }
   }
 
   function bandEnergy(fromHz, toHz) {
@@ -953,6 +1071,10 @@
       sampleValues.forEach((value, index) => {
         bandUniforms[index] = bandUniforms[index] * 0.58 + value * 0.42;
       });
+      if (nowSeconds - lastSampleTempoBeat > 0.48) {
+        registerTempoOnset(nowSeconds, 0.86);
+        lastSampleTempoBeat = nowSeconds;
+      }
     } else if (live) {
       analyser.getByteFrequencyData(frequencyData);
       ranges.forEach(([from, to], index) => {
@@ -1014,19 +1136,15 @@
       lowJump > 0.018
     ) {
       spawnRipple(clamp(lowMidEnergy * 1.38));
-      if (lastAudioAt > 0) {
-        const interval = nowSeconds - lastAudioAt;
-        if (interval > 0.28 && interval < 1.25) {
-          beatIntervals.push(interval);
-          if (beatIntervals.length > 14) beatIntervals.shift();
-          const sorted = [...beatIntervals].sort((a, b) => a - b);
-          const median = sorted[Math.floor(sorted.length / 2)];
-          const bpm = 60 / median;
-          state.bpm = bpm < 70 ? bpm * 2 : bpm > 170 ? bpm / 2 : bpm;
-        }
-      }
+      registerTempoOnset(
+        nowSeconds,
+        clamp(0.2 + lowMidEnergy * 0.72 + state.subBass * 0.42 + Math.max(lowJump, subJump) * 4.2),
+      );
       lastAudioAt = nowSeconds;
       lastRippleAt = nowSeconds;
+    } else if (live && lastAudioAt > 0 && nowSeconds - lastAudioAt > 3.5) {
+      state.bpmConfidence *= 0.992;
+      if (state.bpmConfidence < 0.08 && nowSeconds - lastAudioAt > 8) state.bpm = 0;
     }
 
     const subBassHit = state.subBass > Math.max(0.2, mean * 0.92) && subJump > 0.026;
@@ -1059,7 +1177,10 @@
     dom.bassReadout.textContent = state.bass.toFixed(2);
     dom.midReadout.textContent = state.mid.toFixed(2);
     dom.highReadout.textContent = state.high.toFixed(2);
-    dom.bpmReadout.textContent = state.bpm ? String(Math.round(state.bpm)) : "--";
+    dom.bpmReadout.textContent =
+      state.bpm && state.bpmConfidence > 0.18
+        ? `${Math.round(state.bpm)}${state.bpmConfidence < 0.42 ? "?" : ""}`
+        : "--";
   }
 
   function updateEvents(delta) {
@@ -1361,6 +1482,12 @@
   }
 
   sliders.forEach((slider) => {
+    const label = slider.closest("label");
+    const helper = label?.querySelector("small")?.textContent?.trim();
+    if (helper) {
+      slider.title = helper;
+      label.title = helper;
+    }
     slider.addEventListener("input", () => setParam(slider.dataset.param, slider.value));
   });
   sceneButtons.forEach((button) => {
@@ -1394,6 +1521,9 @@
     startSampleDemo();
   });
   dom.auditionToggle.addEventListener("click", toggleAuditionPlayer);
+  dom.languageToggle?.addEventListener("click", () =>
+    applyLanguage(state.language === "zh" ? "en" : "zh"),
+  );
   dom.echoToggle.addEventListener("click", () => {
     state.echo = !state.echo;
     dom.echoToggle.classList.toggle("active", state.echo);
@@ -1442,6 +1572,8 @@
       ripples: ripples.length,
       impacts: impacts.length,
       meteors: meteors.filter((meteor) => meteor.active).length,
+      bpm: state.bpm,
+      bpmConfidence: state.bpmConfidence,
       renderer: renderer.info.render,
     }),
     stress: (enabled = true) => {
@@ -1467,6 +1599,7 @@
   setScene(0, false);
   setEffect(0);
   setMode("range");
+  applyLanguage(state.language);
   spawnRipple(0.48);
   spawnImpact(0.35, -4.8, 2.5);
   connectMidi();

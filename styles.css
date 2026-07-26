@@ -93,7 +93,7 @@ button,
 
 h1 {
   margin: 9px 0 0;
-  color: rgba(255, 248, 254, 0.92);
+  color: rgba(255, 248, 254, 0.5);
   font-family:
     Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(52px, 8.2vw, 126px);
@@ -101,6 +101,8 @@ h1 {
   letter-spacing: -0.065em;
   line-height: 0.72;
   mix-blend-mode: screen;
+  opacity: 0.76;
+  text-shadow: 0 0 32px rgba(255, 75, 187, 0.08);
   transform: scale(1.08, 0.86);
   transform-origin: top left;
   -webkit-text-stroke: 0.8px currentColor;
@@ -131,18 +133,29 @@ h1 {
   pointer-events: auto;
 }
 
-.design-link {
+.design-link,
+.language-toggle {
   padding: 15px 2px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+  background: transparent;
   color: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.13em;
   text-decoration: none;
 }
 
+.language-toggle {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+}
+
 .design-link:hover,
-.design-link:focus-visible {
+.design-link:focus-visible,
+.language-toggle:hover,
+.language-toggle:focus-visible {
   border-color: var(--pink);
   color: var(--text);
   outline: none;
@@ -395,6 +408,16 @@ h1 {
   color: rgba(255, 255, 255, 0.58);
 }
 
+.control-help,
+.sliders small {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.45;
+}
+
 .audition-player.active {
   display: grid;
   gap: 8px;
@@ -563,6 +586,17 @@ h1 {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
+}
+
+.sliders label small {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-top: -7px;
+}
+
+.sliders input[type="range"] {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 input[type="range"] {

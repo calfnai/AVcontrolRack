@@ -75,12 +75,12 @@ npm start
 - `MIC`：请求麦克风。
 - `AUDIO`：选择本地音频文件。
 - `SAMPLE`：启动内置演示频段，不依赖麦克风、音频文件或第三方播放器。
-- `LISTEN`：展开 SoundCloud 试听，使用 `https://soundcloud.com/calfn/unexpected-round-life`。
+- `LISTEN`：展开 SoundCloud 试听，使用 `https://soundcloud.com/calfn/unexpected-round-life`。它不是 iframe FFT；如需把试听声音送进分析链，请用 BlackHole / 系统音频路由后再选择对应输入设备。
 - `ECHO`：启用或暂停中低频扩散波。
 - `BLACK`：黑场。
 - `FREEZE`：冻结视觉状态。
 - `RND`：在受控范围内随机化参数。
-- `A–H`：Range Echo、Silk Current、Liquid Lens、Orbital、Aurora、Monolith、Solar Bloom、Deep Space。
+- `A–H`：Range Echo、White Heat Field、Avian Constellation、Pitch Architecture、Organic Cartography、Growth Instrument、Particle Form、Deep Transit。
 
 切换场景时，同一个粒子池会经历收拢、涡旋和重新展开；不会重建场景或增加额外绘制。各场景也使用不同机位、连续环绕、节拍推进和受置信度约束的强拍硬切。
 
@@ -128,6 +128,10 @@ window.__AV_TEST__.stress(false)
 620–3500 Hz   -> 盘面纹理和形变
 3500–9500 Hz  -> 流星和空气粒子
 ```
+
+BPM V2 继续使用内置实时节奏银行：最近 18 秒的多拍间隔投票、瞬态强度权重、前一稳定速度连续性和半拍/倍拍抑制。BPM 只控制旋转、推进和镜头节奏，不额外运行物理系统。
+
+BPM 工具调研记录：`realtime-bpm-analyzer` 更接近实时麦克风 / AudioNode 路线；`web-audio-beat-detector` 更适合 AudioBuffer / 文件分析。本项目当前是无构建静态 GitHub Pages，因此 V2 先保留内置实时方案，避免为了引入 npm 依赖破坏直接打开和 Pages 发布；后续若加入构建链，再优先评估实时方案。
 
 歌曲没有明显重低音时，会根据最近数秒的低频动态范围选择更明显的低频瞬态作为替代冲击。BPM 使用最近 18 秒的多拍间隔投票，综合 1–4 拍跨度、瞬态强度、时间新鲜度与前一稳定速度，抑制半拍/倍拍跳变；置信度不足时读数带 `?`，过久没有可靠拍点会自动清空。BPM 只控制旋转、推进和镜头节奏，不额外运行物理系统。
 
