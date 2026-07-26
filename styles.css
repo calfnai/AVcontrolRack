@@ -93,7 +93,7 @@ button,
 
 h1 {
   margin: 9px 0 0;
-  color: rgba(255, 248, 254, 0.5);
+  color: rgba(255, 248, 254, 0.92);
   font-family:
     Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(52px, 8.2vw, 126px);
@@ -101,8 +101,6 @@ h1 {
   letter-spacing: -0.055em;
   line-height: 0.72;
   mix-blend-mode: screen;
-  opacity: 0.76;
-  text-shadow: 0 0 32px rgba(255, 75, 187, 0.08);
   text-transform: uppercase;
 }
 
@@ -121,30 +119,6 @@ h1 {
   letter-spacing: 0.13em;
   backdrop-filter: blur(10px);
   pointer-events: auto;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  pointer-events: auto;
-}
-
-.design-link {
-  padding: 15px 2px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.32);
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  text-decoration: none;
-}
-
-.design-link:hover,
-.design-link:focus-visible {
-  border-color: var(--pink);
-  color: var(--text);
-  outline: none;
 }
 
 .panel-toggle:hover,
@@ -537,17 +511,6 @@ input[type="range"] {
 
   h1 {
     font-size: clamp(46px, 17vw, 78px);
-  }
-
-  .header-actions {
-    flex-direction: column-reverse;
-    align-items: flex-end;
-    gap: 5px;
-  }
-
-  .design-link {
-    padding: 6px 1px 4px;
-    font-size: 7px;
   }
 
   .mode-switch {
