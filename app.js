@@ -64,15 +64,71 @@
     language: localStorage.getItem("rangeEchoLanguage") || "en",
   };
 
-  const SCENE_NAMES = [
-    "RANGE ECHO",
-    "SILK CURRENT",
-    "LIQUID LENS",
-    "ORBITAL",
-    "AURORA",
-    "MONOLITH",
-    "SOLAR BLOOM",
-    "DEEP SPACE",
+  const SCENE_PRESETS = [
+    {
+      name: "RANGE ECHO",
+      hueOffset: 0,
+      warpScale: 1,
+      feedbackOffset: 0,
+      camera: [0, 9.6, 27.5],
+      lookAt: [0, 1.3, 0],
+    },
+    {
+      name: "SILK CURRENT",
+      hueOffset: -0.08,
+      warpScale: 1.26,
+      feedbackOffset: 0.12,
+      camera: [-6.5, 7.6, 25.8],
+      lookAt: [-1.2, 1.15, 0.4],
+    },
+    {
+      name: "LIQUID LENS",
+      hueOffset: 0.1,
+      warpScale: 0.72,
+      feedbackOffset: -0.06,
+      camera: [0, 13.2, 24.2],
+      lookAt: [0, 1.7, 0],
+    },
+    {
+      name: "ORBITAL",
+      hueOffset: -0.2,
+      warpScale: 1.42,
+      feedbackOffset: 0.04,
+      camera: [8.8, 8.4, 25.4],
+      lookAt: [0.5, 1.25, -0.5],
+    },
+    {
+      name: "AURORA",
+      hueOffset: -0.34,
+      warpScale: 1.58,
+      feedbackOffset: 0.16,
+      camera: [-9.5, 6.7, 24.0],
+      lookAt: [-0.6, 1.8, 0.2],
+    },
+    {
+      name: "MONOLITH",
+      hueOffset: 0.18,
+      warpScale: 0.42,
+      feedbackOffset: -0.14,
+      camera: [0, 8.2, 29.0],
+      lookAt: [0, 2.1, 0],
+    },
+    {
+      name: "SOLAR BLOOM",
+      hueOffset: 0.06,
+      warpScale: 0.86,
+      feedbackOffset: 0.1,
+      camera: [7.2, 11.7, 25.2],
+      lookAt: [0.8, 1.6, -0.8],
+    },
+    {
+      name: "DEEP SPACE",
+      hueOffset: -0.14,
+      warpScale: 1.18,
+      feedbackOffset: 0.22,
+      camera: [-4.8, 4.9, 23.6],
+      lookAt: [0, 1.0, -2.2],
+    },
   ];
 
   const dom = Object.fromEntries(
@@ -128,9 +184,21 @@
     return x * x * (3 - 2 * x);
   }
 
+  function fract(value) {
+    return ((value % 1) + 1) % 1;
+  }
+
   function setStatus(element, text, hot = false) {
     element.textContent = text;
     element.classList.toggle("hot", hot);
+  }
+
+  function scenePreset() {
+    return SCENE_PRESETS[state.scene] || SCENE_PRESETS[0];
+  }
+
+  function effectiveFeedback() {
+    return clamp(state.feedback + scenePreset().feedbackOffset, 0, 1);
   }
 
   let renderer;
@@ -175,6 +243,7 @@
     uWarp: { value: state.warp },
     uDensity: { value: state.density },
     uHue: { value: state.hue },
+    uSceneStyle: { value: state.scene },
     uMode: { value: 0 },
     uMorph: { value: 0 },
     uEffect: { value: 0 },
@@ -201,6 +270,7 @@
     uniform float uWarp;
     uniform float uDensity;
     uniform float uHue;
+    uniform float uSceneStyle;
     uniform float uMode;
     uniform float uMorph;
     uniform float uEffect;
@@ -242,6 +312,35 @@
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.05;
       float audioLift = pow(max(0.0, bandEnergy), 1.22) * (1.0 + uIntensity * 4.8);
       float centerForce = exp(-distanceFromCenter * 0.19) * (uBass * 5.2 + uMid * 1.7);
+      float sceneBand = floor(uSceneStyle + 0.5);
+      if (sceneBand > 0.5 && sceneBand < 1.5) {
+        field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
+        field.z += sin(field.x * 0.18 - uTime * 0.34) * (0.08 + uBass * 0.34);
+      } else if (sceneBand > 1.5 && sceneBand < 2.5) {
+        float lens = exp(-distanceFromCenter * 0.09) * (0.8 + uBass * 2.4);
+        field.y += lens * 0.92;
+        field.xz *= 1.0 + lens * 0.018;
+      } else if (sceneBand > 2.5 && sceneBand < 3.5) {
+        float turn = 0.16 * sin(uTime * 0.26) + distanceFromCenter * 0.012;
+        field.xz = rotate2d(turn) * field.xz;
+        centerForce *= 0.72;
+      } else if (sceneBand > 3.5 && sceneBand < 4.5) {
+        float curtain = sin(field.x * 0.34 + uTime * 0.62) * sin(field.z * 0.09 - uTime * 0.18);
+        field.y += curtain * (0.28 + uMid * 1.5);
+        field.x += curtain * 0.22;
+      } else if (sceneBand > 4.5 && sceneBand < 5.5) {
+        float slab = smoothstep(0.72, 0.98, abs(sin(field.x * 0.18))) * smoothstep(16.5, 2.5, abs(field.z));
+        field.y += slab * (1.0 + uBass * 2.6);
+        field.x *= 0.96;
+      } else if (sceneBand > 5.5 && sceneBand < 6.5) {
+        float solar = exp(-pow(distanceFromCenter - 9.2, 2.0) * 0.018);
+        field.y += solar * (0.65 + uBass * 1.8 + uHigh * 0.9);
+        field.xz = rotate2d(solar * 0.07) * field.xz;
+      } else if (sceneBand > 6.5) {
+        float depth = smoothstep(-20.0, 20.0, field.z);
+        field.z += sin(uTime * 0.58 + aSeed * 6.28) * (0.8 + depth * 2.2);
+        field.y *= 0.72 + depth * 0.42;
+      }
       float rippleLift = 0.0;
       float rippleFlash = 0.0;
       float impactLift = 0.0;
@@ -327,12 +426,26 @@
     varying float vSeed;
     varying float vHue;
     uniform float uIntensity;
+    uniform float uSceneStyle;
 
     vec3 palette(float hueShift, float energy) {
       vec3 violet = vec3(0.31, 0.055, 0.52);
       vec3 magenta = vec3(1.0, 0.055, 0.58);
       vec3 pearl = vec3(1.0, 0.91, 0.99);
-      float drift = clamp(hueShift + vSeed * 0.1, 0.0, 1.0);
+      float sceneBand = floor(uSceneStyle + 0.5);
+      if (sceneBand > 1.5 && sceneBand < 2.5) violet = vec3(0.06, 0.24, 0.52);
+      if (sceneBand > 2.5 && sceneBand < 3.5) magenta = vec3(0.56, 0.22, 1.0);
+      if (sceneBand > 3.5 && sceneBand < 4.5) violet = vec3(0.03, 0.36, 0.31);
+      if (sceneBand > 4.5 && sceneBand < 5.5) {
+        violet = vec3(0.19, 0.16, 0.2);
+        magenta = vec3(0.92, 0.78, 0.62);
+      }
+      if (sceneBand > 5.5 && sceneBand < 6.5) magenta = vec3(1.0, 0.46, 0.16);
+      if (sceneBand > 6.5) {
+        violet = vec3(0.03, 0.08, 0.28);
+        magenta = vec3(0.28, 0.16, 1.0);
+      }
+      float drift = fract(hueShift + vSeed * 0.1);
       vec3 base = mix(violet, magenta, 0.35 + drift * 0.45);
       return mix(base, pearl, smoothstep(0.55, 1.7, energy));
     }
@@ -406,6 +519,7 @@
     uHigh: { value: 0 },
     uIntensity: { value: state.intensity },
     uHue: { value: state.hue },
+    uSceneStyle: { value: state.scene },
     uPointScale: { value: 1 },
     uMeteors: { value: meteorUniforms },
   };
@@ -472,6 +586,7 @@
     precision highp float;
     uniform float uIntensity;
     uniform float uHue;
+    uniform float uSceneStyle;
     varying float vAlpha;
     varying float vHeat;
 
@@ -481,6 +596,11 @@
       float glow = 1.0 - smoothstep(0.04, 0.5, d);
       if (glow * vAlpha < 0.01) discard;
       vec3 pink = mix(vec3(0.55, 0.08, 0.72), vec3(1.0, 0.17, 0.67), uHue);
+      float sceneBand = floor(uSceneStyle + 0.5);
+      if (sceneBand > 3.5 && sceneBand < 4.5) pink = mix(vec3(0.05, 0.55, 0.46), vec3(0.52, 1.0, 0.82), uHue);
+      if (sceneBand > 4.5 && sceneBand < 5.5) pink = mix(vec3(0.46, 0.36, 0.28), vec3(1.0, 0.78, 0.46), uHue);
+      if (sceneBand > 5.5 && sceneBand < 6.5) pink = mix(vec3(0.8, 0.18, 0.04), vec3(1.0, 0.66, 0.16), uHue);
+      if (sceneBand > 6.5) pink = mix(vec3(0.08, 0.14, 0.7), vec3(0.42, 0.18, 1.0), uHue);
       vec3 color = mix(pink, vec3(1.0, 0.96, 1.0), vHeat);
       gl_FragColor = vec4(color * (0.58 + uIntensity * 0.56), glow * vAlpha);
     }
@@ -724,7 +844,7 @@
     dom.modeLabel.textContent =
       state.mode === "form"
         ? `PARTICLE FORM / ${state.particleLabel || "ARE"}`
-        : `${SCENE_NAMES[state.scene] || "RANGE FIELD"} / ${audioLabel}`;
+        : `${scenePreset().name || "RANGE FIELD"} / ${audioLabel}`;
   }
 
   function applyLanguage(language) {
@@ -1004,9 +1124,10 @@
   }
 
   function spawnRipple(strength = 0.6) {
+    const feedback = effectiveFeedback();
     const pulse = {
       age: 0,
-      life: 1.75 + state.feedback * 1.05,
+      life: 1.75 + feedback * 1.05,
       strength: clamp(strength, 0.12, 1),
     };
     if (ripples.length < RIPPLE_SLOTS) ripples.push(pulse);
@@ -1014,13 +1135,14 @@
   }
 
   function spawnImpact(strength = 0.75, x, z) {
+    const feedback = effectiveFeedback();
     const radius = FIELD_HALF * 0.82 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
     const impact = {
       x: Number.isFinite(x) ? x : Math.cos(angle) * radius,
       z: Number.isFinite(z) ? z : Math.sin(angle) * radius,
       age: 0,
-      life: 1.28 + state.feedback * 0.55,
+      life: 1.28 + feedback * 0.55,
       strength: clamp(strength, 0.18, 1),
     };
     if (impacts.length < IMPACT_SLOTS) impacts.push(impact);
@@ -1289,12 +1411,16 @@
       state.morph += (state.morphTarget - state.morph) * Math.min(1, delta * 2.8);
     }
 
+    const preset = scenePreset();
+    const sceneHue = fract(state.hue + preset.hueOffset);
+    const sceneWarp = clamp(state.warp * preset.warpScale, 0, 1);
     coreUniforms.uTime.value = time;
     coreUniforms.uIntensity.value = state.intensity;
     coreUniforms.uSize.value = state.size;
-    coreUniforms.uWarp.value = state.warp;
+    coreUniforms.uWarp.value = sceneWarp;
     coreUniforms.uDensity.value = state.density;
-    coreUniforms.uHue.value = state.hue;
+    coreUniforms.uHue.value = sceneHue;
+    coreUniforms.uSceneStyle.value = state.scene;
     coreUniforms.uMode.value = state.mode === "form" ? 1 : 0;
     coreUniforms.uMorph.value = state.morph;
     coreUniforms.uEffect.value = state.effect;
@@ -1304,7 +1430,8 @@
       Math.min(1, delta * 2.2);
     atmosphereUniforms.uTime.value = time;
     atmosphereUniforms.uIntensity.value = state.intensity;
-    atmosphereUniforms.uHue.value = state.hue;
+    atmosphereUniforms.uHue.value = sceneHue;
+    atmosphereUniforms.uSceneStyle.value = state.scene;
     postUniforms.uTime.value = time;
 
     coreField.visible = !state.blackout;
@@ -1315,12 +1442,18 @@
       (desiredCoreRotation - coreField.rotation.y) * Math.min(1, delta * 3.6);
     atmosphere.rotation.y = rotation * 0.58;
 
-    const orbit = (pointerX - 0.5) * 0.28;
-    const height = 9.6 + (0.5 - pointerY) * 2.2;
-    camera.position.x += (Math.sin(orbit) * 11 - camera.position.x) * 0.035;
-    camera.position.y += (height - camera.position.y) * 0.035;
-    camera.position.z += (27.5 + Math.cos(orbit) * 1.4 - camera.position.z) * 0.035;
-    camera.lookAt(0, 1.3 + state.bass * 1.4, 0);
+    const orbit = (pointerX - 0.5) * 0.28 + Math.sin(time * 0.11 + state.scene) * 0.08;
+    const targetX = preset.camera[0] + Math.sin(orbit) * (state.scene === 7 ? 5.5 : 8.5);
+    const targetY = preset.camera[1] + (0.5 - pointerY) * 2.2;
+    const targetZ = preset.camera[2] + Math.cos(orbit) * (state.scene === 3 ? 2.4 : 1.4);
+    camera.position.x += (targetX - camera.position.x) * 0.035;
+    camera.position.y += (targetY - camera.position.y) * 0.035;
+    camera.position.z += (targetZ - camera.position.z) * 0.035;
+    camera.lookAt(
+      preset.lookAt[0],
+      preset.lookAt[1] + state.bass * 1.4,
+      preset.lookAt[2],
+    );
 
     renderFrame();
     updatePerformance(now, delta);
@@ -1554,6 +1687,13 @@
       meteors: meteors.filter((meteor) => meteor.active).length,
       bpm: state.bpm,
       bpmConfidence: state.bpmConfidence,
+      scene: state.scene,
+      sceneName: scenePreset().name,
+      effectiveHue: coreUniforms.uHue.value,
+      effectiveWarp: coreUniforms.uWarp.value,
+      sliderValues: Object.fromEntries(
+        sliders.map((slider) => [slider.dataset.param, slider.value]),
+      ),
       renderer: renderer.info.render,
     }),
     stress: (enabled = true) => {
@@ -1571,6 +1711,7 @@
     impact: spawnImpact,
     meteor: spawnMeteor,
     quality: (name) => configureQuality(name),
+    scene: setScene,
     mode: setMode,
     effect: setEffect,
   };
