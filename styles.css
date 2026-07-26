@@ -361,6 +361,36 @@ h1 {
   grid-template-columns: repeat(3, 1fr);
 }
 
+.sample-player {
+  display: none;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(255, 75, 187, 0.12), rgba(255, 255, 255, 0.025)),
+    rgba(0, 0, 0, 0.18);
+}
+
+.sample-player.active {
+  display: grid;
+  gap: 5px;
+}
+
+.sample-player span,
+.sample-player b {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.sample-player span {
+  color: var(--pink);
+}
+
+.sample-player b {
+  color: rgba(255, 255, 255, 0.58);
+}
+
 .scene-bank {
   grid-template-columns: repeat(8, 1fr);
 }
@@ -442,6 +472,37 @@ h1 {
 
 .particle-tool input[type="text"]:focus {
   border-color: var(--pink);
+}
+
+.io-help {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.io-help div {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 10px;
+}
+
+.io-help dt {
+  color: var(--pink);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.io-help dd {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.io-help code {
+  color: var(--white-hot);
+  font-family: inherit;
 }
 
 .sliders {

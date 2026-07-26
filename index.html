@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Range Echo — a GPU particle field driven by live audio."
+      content="Range Echo V2 — a GPU particle field driven by live audio."
     />
-    <title>Range Echo — AV Control Rack</title>
+    <title>Range Echo V2 — AV Control Rack</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -18,7 +18,7 @@
 
         <header class="art-header">
           <div>
-            <p class="eyebrow">AV CONTROL RACK / CALFN LAU</p>
+            <p class="eyebrow">AV CONTROL RACK / CALFN LAU / V2</p>
             <h1>RANGE<br />ECHO</h1>
           </div>
           <nav class="header-actions" aria-label="Project links">
@@ -81,24 +81,43 @@
             <button id="audioToggle" class="command primary" type="button">MIC</button>
             <label class="command file-command" for="audioInput">AUDIO</label>
             <input id="audioInput" class="hidden-input" type="file" accept="audio/*" />
+            <button id="sampleToggle" class="command" type="button">SAMPLE</button>
             <button id="echoToggle" class="command active" type="button">ECHO</button>
             <button id="blackoutToggle" class="command" type="button">BLACK</button>
             <button id="freezeToggle" class="command" type="button">FREEZE</button>
             <button id="randomize" class="command" type="button">RND</button>
           </div>
+          <div id="samplePlayer" class="sample-player" aria-hidden="true">
+            <span>SAMPLE DRIVE</span>
+            <b>SYNTHETIC LOW-MID / HIGH TRANSIENTS</b>
+          </div>
+        </section>
+
+        <section class="control-section help-section">
+          <p class="section-label">I/O NOTES</p>
+          <dl class="io-help">
+            <div>
+              <dt>MIDI</dt>
+              <dd>Note 36-43 triggers A-H. CC 1-8 maps to the eight field sliders.</dd>
+            </div>
+            <div>
+              <dt>OSC</dt>
+              <dd>Local Node sends <code>/av/&lt;parameter&gt;</code> to UDP <code>127.0.0.1:7000</code>. GitHub Pages stays WEB ONLY.</dd>
+            </div>
+          </dl>
         </section>
 
         <section class="control-section">
-          <p class="section-label">SCENE MEMORY</p>
+          <p class="section-label">SCENE MEMORY V2</p>
           <div class="scene-bank" aria-label="Scene bank">
-            <button class="scene active" data-scene="0" type="button">A</button>
-            <button class="scene" data-scene="1" type="button">B</button>
-            <button class="scene" data-scene="2" type="button">C</button>
-            <button class="scene" data-scene="3" type="button">D</button>
-            <button class="scene" data-scene="4" type="button">E</button>
-            <button class="scene" data-scene="5" type="button">F</button>
-            <button class="scene" data-scene="6" type="button">G</button>
-            <button class="scene" data-scene="7" type="button">H</button>
+            <button class="scene active" data-scene="0" title="Range Echo" type="button">A</button>
+            <button class="scene" data-scene="1" title="Silk Current" type="button">B</button>
+            <button class="scene" data-scene="2" title="Liquid Lens" type="button">C</button>
+            <button class="scene" data-scene="3" title="Orbital" type="button">D</button>
+            <button class="scene" data-scene="4" title="Aurora" type="button">E</button>
+            <button class="scene" data-scene="5" title="Monolith" type="button">F</button>
+            <button class="scene" data-scene="6" title="Solar Bloom" type="button">G</button>
+            <button class="scene" data-scene="7" title="Deep Space" type="button">H</button>
           </div>
         </section>
 
@@ -108,7 +127,7 @@
             <input
               id="particleText"
               type="text"
-              value="ECHO"
+              value="ARE"
               maxlength="12"
               aria-label="Particle text"
             />
@@ -169,12 +188,12 @@
 
         <section class="control-section quality-section">
           <div class="section-heading">
-            <p class="section-label">M1 PERFORMANCE</p>
+            <p class="section-label">PERFORMANCE MODE</p>
             <strong id="qualityReadout">CALIBRATING</strong>
           </div>
           <div class="quality-bank">
             <button class="quality" data-quality="stable" type="button">STABLE</button>
-            <button class="quality active" data-quality="m1" type="button">M1</button>
+            <button class="quality active" data-quality="laptop" type="button">LAPTOP</button>
             <button class="quality" data-quality="high" type="button">HIGH</button>
           </div>
           <div class="perf-grid">

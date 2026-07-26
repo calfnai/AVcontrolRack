@@ -24,10 +24,9 @@
 
   const QUALITY_PROFILES = {
     stable: { label: "STABLE", atmosphere: 3000, pixelRatio: 1, glow: false },
-    m1: { label: "M1 DEFAULT", atmosphere: 8000, pixelRatio: 1.25, glow: true },
-    high: { label: "HIGH / M1 MAX", atmosphere: 24000, pixelRatio: 1.25, glow: true },
+    laptop: { label: "LAPTOP", atmosphere: 8000, pixelRatio: 1.25, glow: true },
+    high: { label: "HIGH / LAPTOP MAX", atmosphere: 24000, pixelRatio: 1.25, glow: true },
   };
-
   if (CORE_COUNT + MAX_ATMOSPHERE > HARD_PARTICLE_LIMIT) {
     throw new Error("Particle budget exceeds the 65,536 point hard limit.");
   }
@@ -50,7 +49,7 @@
     morph: 0,
     morphTarget: 0,
     particleLabel: "",
-    quality: "m1",
+    quality: "laptop",
     calibrated: false,
     bass: 0,
     mid: 0,
@@ -75,6 +74,8 @@
       "modeLabel",
       "audioToggle",
       "audioInput",
+      "sampleToggle",
+      "samplePlayer",
       "echoToggle",
       "blackoutToggle",
       "freezeToggle",
@@ -596,6 +597,8 @@
   let microphoneStream;
   let audioElement;
   let audioObjectUrl;
+  let sampleDemoActive = false;
+  let sampleDemoStartedAt = 0;
   let pointerX = 0.5;
   let pointerY = 0.48;
   let time = 0;
@@ -618,13 +621,14 @@
   let idlePulseAt = -10;
 
   function configureQuality(profileName) {
-    const profile = QUALITY_PROFILES[profileName] || QUALITY_PROFILES.m1;
-    state.quality = profileName;
+    const resolvedName = QUALITY_PROFILES[profileName] ? profileName : "laptop";
+    const profile = QUALITY_PROFILES[resolvedName];
+    state.quality = resolvedName;
     atmosphereGeometry.setDrawRange(0, profile.atmosphere);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.pixelRatio));
     postUniforms.uGlow.value = profile.glow ? 1 : 0;
     qualityButtons.forEach((button) =>
-      button.classList.toggle("active", button.dataset.quality === profileName),
+      button.classList.toggle("active", button.dataset.quality === resolvedName),
     );
     dom.qualityReadout.textContent = profile.label;
     dom.particleReadout.textContent = `${((CORE_COUNT + profile.atmosphere) / 1000).toFixed(1)}k`;
@@ -634,10 +638,10 @@
 
   function downgradeQuality() {
     if (state.quality === "high") {
-      configureQuality("m1");
+      configureQuality("laptop");
       return;
     }
-    if (state.quality === "m1") configureQuality("stable");
+    if (state.quality === "laptop") configureQuality("stable");
   }
 
   function resize() {
@@ -711,10 +715,10 @@
   }
 
   function updateModeLabel() {
-    const audioLabel = analyser ? "LIVE AUDIO" : "IDLE";
+    const audioLabel = sampleDemoActive ? "SAMPLE AUDIO" : analyser ? "LIVE AUDIO" : "IDLE";
     dom.modeLabel.textContent =
       state.mode === "form"
-        ? `PARTICLE FORM / ${state.particleLabel || "ECHO"}`
+        ? `PARTICLE FORM / ${state.particleLabel || "ARE"}`
         : `RANGE FIELD / ${audioLabel}`;
   }
 
@@ -793,6 +797,7 @@
     if (!navigator.mediaDevices?.getUserMedia) {
       throw Object.assign(new Error("Microphone API unavailable"), { name: "NotSupportedError" });
     }
+    stopSampleDemo();
     disconnectAudioSource();
     microphoneStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -810,6 +815,7 @@
 
   async function startAudioFile(file) {
     if (!file) return;
+    stopSampleDemo();
     disconnectAudioSource();
     audioObjectUrl = URL.createObjectURL(file);
     audioElement = new Audio(audioObjectUrl);
@@ -820,6 +826,55 @@
     await audioElement.play();
     setStatus(dom.audioStatus, "FILE LIVE", true);
     dom.audioToggle.classList.remove("active");
+  }
+
+  function sampleBands(nowSeconds) {
+    const t = Math.max(0, nowSeconds - sampleDemoStartedAt);
+    const beat = (t * 2) % 1;
+    const bar = Math.floor(t * 2) % 8;
+    const kick = Math.exp(-beat * 13) * (bar === 0 || bar === 4 ? 1 : 0.62);
+    const offKick = Math.exp(-(((beat + 0.5) % 1)) * 9) * 0.22;
+    const snare = Math.exp(-Math.pow(beat - 0.5, 2) * 42) * 0.34;
+    const shimmer = Math.max(0, Math.sin(t * 17) * Math.sin(t * 2.75)) * 0.34;
+    const phrase = 0.5 + Math.sin(t * 0.23) * 0.5;
+    return [
+      0.18 + kick * 0.78 + offKick,
+      0.2 + kick * 0.62 + offKick * 0.8,
+      0.16 + kick * 0.36 + snare * 0.22,
+      0.18 + snare * 0.44 + phrase * 0.08,
+      0.14 + Math.sin(t * 1.4) * 0.05 + snare * 0.22,
+      0.1 + shimmer * 0.28,
+      0.08 + shimmer * 0.44,
+      0.06 + shimmer * 0.52 + Math.max(0, Math.sin(t * 6.1)) * 0.08,
+    ].map((value) => clamp(value));
+  }
+
+  function startSampleDemo() {
+    disconnectAudioSource();
+    sampleDemoActive = true;
+    sampleDemoStartedAt = performance.now() / 1000;
+    dom.sampleToggle.classList.add("active");
+    dom.sampleToggle.classList.remove("primary");
+    dom.audioToggle.classList.remove("active");
+    dom.samplePlayer.classList.add("active");
+    dom.samplePlayer.setAttribute("aria-hidden", "false");
+    setStatus(dom.audioStatus, "SAMPLE LIVE", true);
+    updateModeLabel();
+  }
+
+  function stopSampleDemo() {
+    if (!sampleDemoActive && !dom.samplePlayer?.classList.contains("active")) return;
+    sampleDemoActive = false;
+    dom.sampleToggle?.classList.remove("active");
+    dom.samplePlayer?.classList.remove("active");
+    dom.samplePlayer?.setAttribute("aria-hidden", "true");
+    updateModeLabel();
+  }
+
+  function handleAudioError(error) {
+    const label = describeAudioError(error);
+    setStatus(dom.audioStatus, `${label} / TRY SAMPLE`, false);
+    dom.sampleToggle.classList.add("primary");
   }
 
   function bandEnergy(fromHz, toHz) {
@@ -882,9 +937,14 @@
       [1180, 2200],
       [2200, 3500],
     ];
-    const live = Boolean(analyser && frequencyData);
+    const sampleValues = sampleDemoActive ? sampleBands(nowSeconds) : null;
+    const live = Boolean(sampleValues || (analyser && frequencyData));
 
-    if (live) {
+    if (sampleValues) {
+      sampleValues.forEach((value, index) => {
+        bandUniforms[index] = bandUniforms[index] * 0.58 + value * 0.42;
+      });
+    } else if (live) {
       analyser.getByteFrequencyData(frequencyData);
       ranges.forEach(([from, to], index) => {
         bandUniforms[index] = bandUniforms[index] * 0.7 + bandEnergy(from, to) * 0.3;
@@ -903,7 +963,11 @@
     const bass = bandUniforms[1] * 0.35 + bandUniforms[2] * 0.65;
     const lowMid = bandUniforms[3] * 0.66 + bandUniforms[4] * 0.34;
     const mid = bandUniforms[4] * 0.42 + bandUniforms[5] * 0.38 + bandUniforms[6] * 0.2;
-    const liveHigh = live ? bandEnergy(3500, 9500) : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
+    const liveHigh = sampleValues
+      ? sampleValues[7]
+      : live
+        ? bandEnergy(3500, 9500)
+        : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
 
     state.subBass = state.subBass * 0.76 + subBass * 0.24;
     state.bass = state.bass * 0.78 + bass * 0.22;
@@ -1182,7 +1246,7 @@
   }
 
   function applyTextForm() {
-    const label = (dom.particleText.value.trim() || "ECHO").toUpperCase();
+    const label = (dom.particleText.value.trim() || "ARE").toUpperCase();
     formContext.clearRect(0, 0, FORM_CANVAS_SIZE, FORM_CANVAS_SIZE);
     formContext.fillStyle = "#ffffff";
     formContext.textAlign = "center";
@@ -1307,14 +1371,18 @@
   dom.panelClose.addEventListener("click", () => openPanel(false));
   dom.scrim.addEventListener("click", () => openPanel(false));
   dom.audioToggle.addEventListener("click", () => {
-    startMicrophone().catch((error) =>
-      setStatus(dom.audioStatus, describeAudioError(error), false),
-    );
+    startMicrophone().catch(handleAudioError);
   });
   dom.audioInput.addEventListener("change", () => {
-    startAudioFile(dom.audioInput.files?.[0]).catch((error) =>
-      setStatus(dom.audioStatus, describeAudioError(error), false),
-    );
+    startAudioFile(dom.audioInput.files?.[0]).catch(handleAudioError);
+  });
+  dom.sampleToggle.addEventListener("click", () => {
+    if (sampleDemoActive) {
+      stopSampleDemo();
+      setStatus(dom.audioStatus, "AUDIO OFF", false);
+      return;
+    }
+    startSampleDemo();
   });
   dom.echoToggle.addEventListener("click", () => {
     state.echo = !state.echo;
@@ -1385,7 +1453,7 @@
     effect: setEffect,
   };
 
-  configureQuality("m1");
+  configureQuality("laptop");
   setScene(0, false);
   setEffect(0);
   setMode("range");

@@ -1,8 +1,12 @@
-# RANGE ECHO
+# RANGE ECHO V2
 
 ## Notes Towards an Auditory Image
 
 **Artist statement / 2026**
+
+V2 fixes the work's public identity around a browser-first audio-responsive field: direct sample play, live input when available, particle-form import, and a performance budget that treats the laptop as the ceiling rather than the floor.
+
+V2 把网页试玩、现场输入和性能边界收束到同一个作品版本里。
 
 > Audibility does not become image. It returns as evidence of a force already withdrawn.
 
