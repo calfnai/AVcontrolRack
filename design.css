@@ -7,9 +7,7 @@
   --pink: #ff40b5;
   --violet: #8b4dff;
   --line: rgba(255, 255, 255, 0.16);
-  --serif: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
-  --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --mono: "SFMono-Regular", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", sans-serif;
 }
 
 * {
@@ -18,6 +16,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -25,7 +24,8 @@ body {
   overflow-x: hidden;
   background: var(--black);
   color: var(--text);
-  font-family: var(--mono);
+  font-family: var(--sans);
+  font-synthesis: none;
 }
 
 a {
@@ -116,7 +116,7 @@ h1 {
   margin: 14px 0 0;
   max-width: 720px;
   color: var(--paper);
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--sans);
   font-size: clamp(92px, 16vw, 250px);
   font-weight: 900;
   letter-spacing: -0.065em;
@@ -130,11 +130,11 @@ h1 {
 
 .hero-statement > p:not(.cn-note) {
   margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(26px, 3.5vw, 53px);
-  font-style: italic;
-  letter-spacing: -0.035em;
-  line-height: 1.06;
+  font-family: var(--sans);
+  font-size: clamp(24px, 3vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.14;
 }
 
 .cn-note {
@@ -268,10 +268,10 @@ h1 {
 h2 {
   max-width: 980px;
   margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(44px, 6.5vw, 96px);
-  font-weight: 400;
-  letter-spacing: -0.06em;
+  font-family: var(--sans);
+  font-size: clamp(42px, 6vw, 88px);
+  font-weight: 600;
+  letter-spacing: -0.052em;
   line-height: 0.98;
 }
 
@@ -286,9 +286,11 @@ h2 {
 .closing > p:not(.section-number, .cn-note, .final-line) {
   margin: 0 0 1.35em;
   color: #cfc4cd;
-  font-family: var(--serif);
-  font-size: clamp(19px, 1.75vw, 27px);
-  line-height: 1.58;
+  font-family: var(--sans);
+  font-size: clamp(18px, 1.55vw, 23px);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.62;
 }
 
 blockquote {
@@ -297,8 +299,9 @@ blockquote {
   padding: clamp(30px, 5vw, 72px) 0;
   border-top: 1px solid var(--pink);
   border-bottom: 1px solid var(--pink);
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--sans);
   font-size: clamp(48px, 8.9vw, 136px);
+  font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 0.8;
 }
@@ -332,9 +335,9 @@ blockquote span:nth-child(even) {
 
 h3 {
   margin: 0 0 38px;
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-size: clamp(36px, 4.5vw, 68px);
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: -0.05em;
   line-height: 1;
 }
@@ -414,10 +417,13 @@ h3 {
   position: relative;
   z-index: 2;
   margin: 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--sans);
   font-size: clamp(68px, 14.5vw, 225px);
+  font-weight: 800;
   letter-spacing: -0.06em;
   line-height: 0.69;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .interlude p:nth-child(even) {
@@ -493,7 +499,7 @@ h3 {
   max-width: 780px;
   color: var(--paper) !important;
   font-size: clamp(26px, 3vw, 44px) !important;
-  font-style: italic;
+  font-weight: 500 !important;
 }
 
 .closing > p:not(.section-number, .cn-note, .final-line) {
@@ -502,8 +508,9 @@ h3 {
 
 .final-line {
   margin: clamp(70px, 10vw, 140px) 0 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--sans);
   font-size: clamp(50px, 9vw, 135px);
+  font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 0.84;
   text-transform: uppercase;
@@ -585,7 +592,7 @@ h3 {
   }
 
   .interlude p {
-    font-size: 20vw;
+    font-size: 17vw;
     line-height: 0.8;
   }
 
