@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Range Echo — Version Comparison</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #050306;
+        color: #fff8fe;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        padding: clamp(28px, 5vw, 72px);
+        background:
+          radial-gradient(circle at 18% 20%, rgba(255, 75, 187, 0.16), transparent 34%),
+          #050306;
+      }
+
+      header {
+        max-width: 840px;
+        margin-bottom: clamp(40px, 7vw, 88px);
+      }
+
+      .eyebrow {
+        color: #ff4bbb;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+      }
+
+      h1 {
+        margin: 14px 0 18px;
+        font-size: clamp(48px, 9vw, 128px);
+        letter-spacing: -0.07em;
+        line-height: 0.78;
+      }
+
+      header p {
+        max-width: 600px;
+        color: rgba(255, 248, 254, 0.62);
+        line-height: 1.6;
+      }
+
+      .versions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      article {
+        min-height: 300px;
+        padding: clamp(24px, 4vw, 52px);
+        background: rgba(5, 3, 6, 0.92);
+      }
+
+      article span {
+        color: #ff4bbb;
+        font: 800 10px/1 monospace;
+        letter-spacing: 0.13em;
+      }
+
+      h2 {
+        margin: 20px 0 12px;
+        font-size: clamp(26px, 4vw, 52px);
+      }
+
+      article p {
+        min-height: 72px;
+        color: rgba(255, 248, 254, 0.58);
+        line-height: 1.55;
+      }
+
+      a {
+        display: inline-flex;
+        margin-top: 34px;
+        padding: 14px 18px;
+        border: 1px solid rgba(255, 255, 255, 0.38);
+        color: #fff8fe;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-decoration: none;
+      }
+
+      a:hover,
+      a:focus-visible {
+        border-color: #ff4bbb;
+        outline: none;
+      }
+
+      @media (max-width: 720px) {
+        .versions {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">AV CONTROL RACK / CALFN LAU</div>
+      <h1>RANGE ECHO<br />COMPARE</h1>
+      <p>
+        两个版本均为独立、固定的完整快照。建议分别在两个标签页中全屏打开，
+        避免同时运行两套 WebGL 场景影响帧率判断。
+      </p>
+    </header>
+
+    <main class="versions">
+      <article>
+        <span>VERSION / 2e60c83</span>
+        <h2>SCENE RESTORE</h2>
+        <p>A–H scene memory 恢复完成时的版本，保留当时的导航结构。</p>
+        <a href="./2e60c83/index.html" target="_blank" rel="noreferrer">OPEN 2e60c83 ↗</a>
+      </article>
+
+      <article>
+        <span>VERSION / 8ccedb2</span>
+        <h2>CONTROL NAVIGATION</h2>
+        <p>CONTROL 保持英文，语言与 Design Note 入口收进控制菜单。</p>
+        <a href="./8ccedb2/index.html" target="_blank" rel="noreferrer">OPEN 8ccedb2 ↗</a>
+      </article>
+    </main>
+  </body>
+</html>

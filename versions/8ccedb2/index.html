@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Range Echo V2 — a GPU particle field driven by live audio."
+    />
+    <title>Range Echo V2 — AV Control Rack</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage" aria-label="Range Echo visual output">
+        <canvas id="visualizer"></canvas>
+
+        <header class="art-header">
+          <div>
+            <p class="eyebrow">
+              <a class="design-entry" href="design.html">AV CONTROL RACK</a>
+              <span aria-hidden="true"> / </span>CALFN LAU
+            </p>
+            <h1>RANGE<br />ECHO</h1>
+          </div>
+          <nav class="header-actions" aria-label="Project links">
+            <button
+              id="panelToggle"
+              class="panel-toggle"
+              type="button"
+              aria-controls="rack"
+              aria-expanded="false"
+            >
+              <span>CONTROL</span>
+              <span aria-hidden="true">＋</span>
+            </button>
+          </nav>
+        </header>
+
+        <div class="mode-switch" aria-label="Visual mode">
+          <button class="mode active" data-mode="range" type="button">RANGE FIELD</button>
+          <button class="mode" data-mode="form" type="button">PARTICLE FORM</button>
+        </div>
+
+        <div class="stage-footer">
+          <div class="now-playing">
+            <span class="signal-dot"></span>
+            <span id="modeLabel">RANGE FIELD / IDLE</span>
+          </div>
+          <div class="compact-meters" aria-label="Audio meters">
+            <span>LOW <b id="bassReadout">0.00</b></span>
+            <span>MID <b id="midReadout">0.00</b></span>
+            <span>HIGH <b id="highReadout">0.00</b></span>
+            <span>BPM <b id="bpmReadout">--</b></span>
+          </div>
+        </div>
+
+        <div id="startupNotice" class="startup-notice" role="status">
+          <span class="calibration-mark"></span>
+          CALIBRATING YOUR COMPUTER PERFORMANCE
+        </div>
+      </section>
+
+      <aside id="rack" class="rack" aria-label="AV control rack" aria-hidden="true">
+        <div class="rack-head">
+          <div>
+            <p class="eyebrow">LIVE PARAMETERS</p>
+            <h2>CONTROL</h2>
+          </div>
+          <div class="rack-actions">
+            <a class="menu-design-link" href="design.html">DESIGN NOTE</a>
+            <button id="languageToggle" class="language-toggle" type="button">中文</button>
+            <button id="panelClose" class="icon-button" type="button" aria-label="Close controls">×</button>
+          </div>
+        </div>
+
+        <div class="status-stack">
+          <span id="audioStatus" class="status">AUDIO OFF</span>
+          <span id="midiStatus" class="status">MIDI IDLE</span>
+          <span id="oscStatus" class="status">OSC READY</span>
+        </div>
+
+        <section class="control-section">
+          <p class="section-label">INPUT</p>
+          <div class="transport">
+            <button id="audioToggle" class="command primary" type="button">MIC</button>
+            <label class="command file-command" for="audioInput">AUDIO</label>
+            <input id="audioInput" class="hidden-input" type="file" accept="audio/*" />
+            <button id="sampleToggle" class="command" type="button">SAMPLE</button>
+            <button id="auditionToggle" class="command" type="button">LISTEN</button>
+            <button id="echoToggle" class="command active" type="button">ECHO</button>
+            <button id="blackoutToggle" class="command" type="button">BLACK</button>
+            <button id="freezeToggle" class="command" type="button">FREEZE</button>
+            <button id="randomize" class="command" type="button">RND</button>
+          </div>
+          <div id="samplePlayer" class="sample-player" aria-hidden="true">
+            <span>SAMPLE DRIVE</span>
+            <b>SYNTHETIC LOW-MID / HIGH TRANSIENTS</b>
+          </div>
+          <div id="auditionPlayer" class="audition-player" aria-hidden="true">
+            <div class="audition-head">
+              <span>LISTENING REFERENCE</span>
+              <a href="https://soundcloud.com/calfn/unexpected-round-life" target="_blank" rel="noreferrer">OPEN ↗</a>
+            </div>
+            <iframe
+              title="Unexpected Round Life on SoundCloud"
+              loading="lazy"
+              allow="autoplay"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/calfn/unexpected-round-life&color=%23ff4bbb&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false"
+            ></iframe>
+            <p id="auditionHelp" class="control-help">
+              SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.
+            </p>
+          </div>
+        </section>
+
+        <section class="control-section help-section">
+          <p class="section-label">I/O NOTES</p>
+          <dl class="io-help">
+            <div>
+              <dt>MIDI</dt>
+              <dd>Note 36-43 triggers A-H. CC 1-8 maps to the eight field sliders.</dd>
+            </div>
+            <div>
+              <dt>OSC</dt>
+              <dd>Local Node sends <code>/av/&lt;parameter&gt;</code> to UDP <code>127.0.0.1:7000</code>. GitHub Pages stays WEB ONLY.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="control-section">
+          <p class="section-label">SCENE MEMORY</p>
+          <div class="scene-bank" aria-label="Scene bank">
+            <button class="scene active" data-scene="0" title="Range Echo" type="button">A</button>
+            <button class="scene" data-scene="1" title="Silk Current" type="button">B</button>
+            <button class="scene" data-scene="2" title="Liquid Lens" type="button">C</button>
+            <button class="scene" data-scene="3" title="Orbital" type="button">D</button>
+            <button class="scene" data-scene="4" title="Aurora" type="button">E</button>
+            <button class="scene" data-scene="5" title="Monolith" type="button">F</button>
+            <button class="scene" data-scene="6" title="Solar Bloom" type="button">G</button>
+            <button class="scene" data-scene="7" title="Deep Space" type="button">H</button>
+          </div>
+          <p id="sceneHelp" class="control-help">A-H recall the original scene memories. Use RND or the sliders for parameter changes.</p>
+        </section>
+
+        <section class="control-section">
+          <p class="section-label">PARTICLE FORM</p>
+          <div class="particle-tool">
+            <input
+              id="particleText"
+              type="text"
+              value="ARE"
+              maxlength="12"
+              aria-label="Particle text"
+            />
+            <button id="textParticle" class="command" type="button">TEXT</button>
+            <label class="command file-command" for="imageInput">IMAGE / SVG</label>
+            <input
+              id="imageInput"
+              class="hidden-input"
+              type="file"
+              accept="image/*,.svg"
+            />
+            <button id="clearParticle" class="command" type="button">CLEAR</button>
+          </div>
+          <div class="effect-bank" aria-label="Particle effect">
+            <button class="effect active" data-effect="0" type="button">MORPH</button>
+            <button class="effect" data-effect="1" type="button">SCATTER</button>
+            <button class="effect" data-effect="2" type="button">VORTEX</button>
+            <button class="effect" data-effect="3" type="button">PULSE</button>
+            <button class="effect" data-effect="4" type="button">WAVE</button>
+          </div>
+        </section>
+
+        <section class="control-section sliders">
+          <p class="section-label">FIELD</p>
+          <label>
+            <span>Speed</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.32" data-param="speed" />
+            <small>Time speed, disk rotation and camera push.</small>
+          </label>
+          <label>
+            <span>Density</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.72" data-param="density" />
+            <small>Visible point density; it does not exceed the M1 particle budget.</small>
+          </label>
+          <label>
+            <span>Feedback</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.58" data-param="feedback" />
+            <small>Ripple, impact and aftershock lifetime.</small>
+          </label>
+          <label>
+            <span>Warp</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.42" data-param="warp" />
+            <small>Spatial bending, drift and surface deformation.</small>
+          </label>
+          <label>
+            <span>Size</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.48" data-param="size" />
+            <small>Point sprite / light needle size, not particle count.</small>
+          </label>
+          <label>
+            <span>Audio Gain</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.7" data-param="audioGain" />
+            <small>Input gain before FFT and event detection.</small>
+          </label>
+          <label>
+            <span>Hue</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.9" data-param="hue" />
+            <small>Hue shift inside the current scene palette.</small>
+          </label>
+          <label>
+            <span>Intensity</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.8" data-param="intensity" />
+            <small>Glow, white heat and audio response strength.</small>
+          </label>
+        </section>
+
+        <section class="control-section quality-section">
+          <div class="section-heading">
+            <p class="section-label">PERFORMANCE MODE</p>
+            <strong id="qualityReadout">CALIBRATING</strong>
+          </div>
+          <div class="quality-bank">
+            <button class="quality" data-quality="stable" type="button">STABLE</button>
+            <button class="quality active" data-quality="laptop" type="button">LAPTOP</button>
+            <button class="quality" data-quality="high" type="button">HIGH</button>
+          </div>
+          <div class="perf-grid">
+            <div><span>FPS</span><b id="fpsReadout">--</b></div>
+            <div><span>P95</span><b id="frameReadout">-- ms</b></div>
+            <div><span>POINTS</span><b id="particleReadout">33.6k</b></div>
+            <div><span>DPR</span><b id="dprReadout">1.25</b></div>
+          </div>
+        </section>
+      </aside>
+
+      <button id="scrim" class="scrim" type="button" tabindex="-1" aria-label="Close controls"></button>
+    </main>
+
+    <script src="vendor/three.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
