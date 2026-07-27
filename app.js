@@ -860,8 +860,8 @@
       dom.languageToggle.textContent = zh ? "EN" : "中文";
       dom.languageToggle.title = zh ? "Switch to English" : "切换到中文";
     }
-    setText(".design-link", "DESIGN NOTE", "设计说明");
-    dom.panelToggle.querySelector("span").textContent = zh ? "控制" : "CONTROL";
+    setText(".menu-design-link", "DESIGN NOTE", "设计说明");
+    dom.panelToggle.querySelector("span").textContent = "CONTROL";
     setText("#audioToggle", "MIC", "麦克风");
     setText("label[for='audioInput']", "AUDIO", "音频");
     setText("#sampleToggle", "SAMPLE", "样本");
@@ -874,7 +874,7 @@
     setText("label[for='imageInput']", "IMAGE / SVG", "图片 / SVG");
     setText("#clearParticle", "CLEAR", "清除");
     setText(".rack-head .eyebrow", "LIVE PARAMETERS", "现场参数");
-    setText(".rack h2", "CONTROL", "控制");
+    setText(".rack h2", "CONTROL", "CONTROL");
     setText(".control-section:nth-of-type(1) .section-label", "INPUT", "输入");
     setText(".help-section .section-label", "I/O NOTES", "输入输出说明");
     setText(".control-section:nth-of-type(3) .section-label", "SCENE MEMORY", "场景记忆");
