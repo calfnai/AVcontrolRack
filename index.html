@@ -120,7 +120,7 @@
           <dl class="io-help">
             <div>
               <dt>MIDI</dt>
-              <dd>Note 36-43 triggers A-H. CC 1-8 maps to the eight field sliders.</dd>
+              <dd>Note 36-43 triggers A-H. CC 1-8 maps to the main field sliders.</dd>
             </div>
             <div>
               <dt>OSC</dt>
@@ -204,6 +204,21 @@
             <span>Audio Gain</span>
             <input type="range" min="0" max="1" step="0.001" value="0.7" data-param="audioGain" />
             <small>Input gain before FFT and event detection.</small>
+          </label>
+          <label>
+            <span>Low Sens</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.82" data-param="lowSensitivity" />
+            <small>Low and sub energy: centre force, ripples and hidden impact hits.</small>
+          </label>
+          <label>
+            <span>Mid Sens</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.74" data-param="midSensitivity" />
+            <small>Low-mid body: field breathing and broad surface response.</small>
+          </label>
+          <label>
+            <span>High Sens</span>
+            <input type="range" min="0" max="1" step="0.001" value="0.68" data-param="highSensitivity" />
+            <small>High transients: meteor rate, white heat and atmosphere shimmer.</small>
           </label>
           <label>
             <span>Hue</span>

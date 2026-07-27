@@ -93,7 +93,7 @@ Particle Form 效果：
 
 - `MORPH`：保持目标形态。
 - `SCATTER`：沿粒子方向散开。
-- `VORTEX`：围绕形态中心旋转。
+- `VORTEX`：从形态中心向外生成环形扰动，避免细长螺旋形变。
 - `PULSE`：整体呼吸。
 - `WAVE`：形态表面行波。
 
@@ -170,6 +170,9 @@ OSC 地址保持兼容：
 /av/warp
 /av/size
 /av/audioGain
+/av/lowSensitivity
+/av/midSensitivity
+/av/highSensitivity
 /av/hue
 /av/intensity
 /av/echo
@@ -181,5 +184,6 @@ MIDI 映射保持不变：
 
 ```text
 CC 1-8       -> speed, density, feedback, warp, size, audioGain, hue, intensity
+Manual only  -> lowSensitivity, midSensitivity, highSensitivity
 Note 36-43   -> scene A-H
 ```

@@ -39,6 +39,9 @@
     warp: 0.42,
     size: 0.48,
     audioGain: 0.7,
+    lowSensitivity: 0.82,
+    midSensitivity: 0.74,
+    highSensitivity: 0.68,
     hue: 0.9,
     intensity: 0.8,
     blackout: false,
@@ -236,6 +239,7 @@
     uTime: { value: 0 },
     uBands: { value: bandUniforms },
     uBass: { value: 0 },
+    uLowMid: { value: 0 },
     uMid: { value: 0 },
     uHigh: { value: 0 },
     uIntensity: { value: state.intensity },
@@ -263,6 +267,7 @@
     uniform float uTime;
     uniform float uBands[8];
     uniform float uBass;
+    uniform float uLowMid;
     uniform float uMid;
     uniform float uHigh;
     uniform float uIntensity;
@@ -295,12 +300,6 @@
       return uBands[7];
     }
 
-    mat2 rotate2d(float angle) {
-      float c = cos(angle);
-      float s = sin(angle);
-      return mat2(c, -s, s, c);
-    }
-
     void main() {
       vec3 field = position;
       float distanceFromCenter = length(field.xz);
@@ -310,8 +309,10 @@
       float idle = 0.14
         + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.09
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.05;
-      float audioLift = pow(max(0.0, bandEnergy), 1.22) * (1.0 + uIntensity * 4.8);
-      float centerForce = exp(-distanceFromCenter * 0.19) * (uBass * 5.2 + uMid * 1.7);
+      float audioLift = pow(max(0.0, bandEnergy), 1.08) * (1.25 + uIntensity * 6.2);
+      float centerForce = exp(-distanceFromCenter * 0.145) * (uBass * 7.2 + uLowMid * 3.4);
+      float fieldBreath = sin(distanceFromCenter * 0.38 - uTime * 1.18) * (uBass * 0.9 + uLowMid * 0.62);
+      field.y += fieldBreath * (1.0 - smoothstep(18.0, 23.0, distanceFromCenter));
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
@@ -321,9 +322,10 @@
         field.y += lens * 0.92;
         field.xz *= 1.0 + lens * 0.018;
       } else if (sceneBand > 2.5 && sceneBand < 3.5) {
-        float turn = 0.16 * sin(uTime * 0.26) + distanceFromCenter * 0.012;
-        field.xz = rotate2d(turn) * field.xz;
-        centerForce *= 0.72;
+        float orbitalRing = exp(-pow(distanceFromCenter - 8.5, 2.0) * 0.026);
+        field.y += orbitalRing * (0.42 + uBass * 1.75 + uMid * 0.82);
+        field.xz *= 1.0 + orbitalRing * (0.012 + uLowMid * 0.018);
+        centerForce *= 0.82;
       } else if (sceneBand > 3.5 && sceneBand < 4.5) {
         float curtain = sin(field.x * 0.34 + uTime * 0.62) * sin(field.z * 0.09 - uTime * 0.18);
         field.y += curtain * (0.28 + uMid * 1.5);
@@ -335,7 +337,7 @@
       } else if (sceneBand > 5.5 && sceneBand < 6.5) {
         float solar = exp(-pow(distanceFromCenter - 9.2, 2.0) * 0.018);
         field.y += solar * (0.65 + uBass * 1.8 + uHigh * 0.9);
-        field.xz = rotate2d(solar * 0.07) * field.xz;
+        field.xz *= 1.0 + solar * 0.012;
       } else if (sceneBand > 6.5) {
         float depth = smoothstep(-20.0, 20.0, field.z);
         field.z += sin(uTime * 0.58 + aSeed * 6.28) * (0.8 + depth * 2.2);
@@ -386,9 +388,11 @@
         vec3 direction = normalize(form + vec3(aSeed - 0.5, aSeed * 0.4, 0.25));
         form += direction * effect * (4.0 + aSeed * 7.0);
       } else if (uEffect > 1.5 && uEffect < 2.5) {
-        float turn = effect * (1.2 + length(form.xz) * 0.11) + uTime * 0.22;
-        form.xz = rotate2d(turn) * form.xz;
-        form.y += sin(length(form.xz) * 0.6 - uTime * 1.4) * effect * 0.7;
+        float radius = length(form.xz);
+        float ring = sin(radius * 0.82 - uTime * 1.4);
+        vec2 radial = radius > 0.001 ? form.xz / radius : vec2(0.0, 1.0);
+        form.xz += radial * ring * effect * 0.72;
+        form.y += ring * effect * 0.62;
       } else if (uEffect > 2.5 && uEffect < 3.5) {
         form *= 1.0 + sin(uTime * 2.2 + aSeed * 2.0) * 0.12 * effect;
       } else if (uEffect > 3.5) {
@@ -399,7 +403,7 @@
       vec3 transformed = mix(field, form, uMorph);
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
       float energy = clamp(
-        bandEnergy * 0.62 + rippleFlash * 0.72 + impactFlash + uBass * 0.18,
+        bandEnergy * 0.76 + rippleFlash * 0.86 + impactFlash + uBass * 0.25 + uLowMid * 0.16,
         0.0,
         2.2
       );
@@ -456,12 +460,12 @@
       float core = 1.0 - smoothstep(0.02, 0.2, radial);
       float halo = 1.0 - smoothstep(0.08, 0.52, radial);
       float taper = 1.0 - smoothstep(0.34, 0.5, abs(p.y));
-      float alpha = (core * 0.7 + halo * 0.13) * taper * vAlpha * 0.32;
+      float alpha = (core * 0.72 + halo * 0.16) * taper * vAlpha * 0.38;
       if (alpha < 0.012) discard;
       vec3 color = palette(vHue, vEnergy);
       float whiteCore = core * smoothstep(0.42, 1.5, vEnergy);
       color = mix(color, vec3(1.0, 0.97, 1.0), whiteCore);
-      gl_FragColor = vec4(color * (0.48 + uIntensity * 0.42 + vEnergy * 0.24), alpha);
+      gl_FragColor = vec4(color * (0.52 + uIntensity * 0.5 + vEnergy * 0.31), alpha);
     }
   `;
 
@@ -551,16 +555,16 @@
       if (aKind > 0.5) {
         vec4 meteor = meteorForLane(aLane);
         float head = meteor.z;
-        float trail = aSeed * 0.3;
+        float trail = aSeed * 0.16;
         float p = head - trail;
         if (meteor.w > 0.0 && p > 0.0 && p < 1.0) {
-          vec3 start = vec3(meteor.x - 5.2, 17.0 + aLane * 1.3, meteor.y - 8.0);
+          vec3 start = vec3(meteor.x - 3.6, 16.0 + aLane * 1.2, meteor.y - 6.2);
           vec3 end = vec3(meteor.x, 0.35, meteor.y);
           transformed = mix(start, end, p);
-          transformed.x += sin(aSeed * 31.0) * 0.16;
-          transformed.y += cos(aSeed * 27.0) * 0.11;
-          vAlpha = pow(1.0 - aSeed, 0.7) * meteor.w;
-          vHeat = 1.0;
+          transformed.x += (aSeed - 0.5) * 0.06;
+          transformed.z += sin(aSeed * 18.0) * 0.05;
+          vAlpha = pow(1.0 - aSeed, 1.15) * meteor.w * 0.72;
+          vHeat = 0.76;
         } else {
           transformed = vec3(0.0, -200.0, 0.0);
         }
@@ -574,7 +578,7 @@
 
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
       gl_PointSize = clamp(
-        (aKind > 0.5 ? 10.0 : 5.0) * uPointScale / max(3.0, -mvPosition.z) * 12.0,
+        (aKind > 0.5 ? 7.0 : 5.0) * uPointScale / max(3.0, -mvPosition.z) * 12.0,
         1.0,
         14.0
       );
@@ -881,6 +885,9 @@
     setText(".control-section:nth-of-type(4) .section-label", "PARTICLE FORM", "粒子形态");
     setText(".quality-section .section-label", "PERFORMANCE MODE", "性能档位");
     setText(".sliders .section-label", "FIELD", "场域参数");
+    setText("[data-param='lowSensitivity'] + small", "Low and sub energy: centre force, ripples and hidden impact hits.", "低频和重低频：中心力量、涟漪和隐形冲击。");
+    setText("[data-param='midSensitivity'] + small", "Low-mid body: field breathing and broad surface response.", "中频身体感：场域呼吸和大面积响应。");
+    setText("[data-param='highSensitivity'] + small", "High transients: meteor rate, white heat and atmosphere shimmer.", "高频瞬态：流星频率、白热和氛围闪烁。");
     dom.auditionHelp.textContent = zh
       ? "SoundCloud 是试听源，不是 iframe FFT。如需真实分析，请用 BlackHole 或其他系统音频路由作为 MIC 输入。"
       : "SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.";
@@ -1123,6 +1130,17 @@
     return clamp((sum / Math.max(1, end - start) / 255) * state.audioGain * 1.55);
   }
 
+  function sensitivityForBand(index) {
+    if (index <= 2) return 0.62 + state.lowSensitivity * 1.28;
+    if (index <= 5) return 0.62 + state.midSensitivity * 1.18;
+    return 0.62 + state.highSensitivity * 1.18;
+  }
+
+  function applyBandResponse(value, index) {
+    const boosted = value * sensitivityForBand(index);
+    return clamp(Math.pow(Math.max(0, boosted), 0.86));
+  }
+
   function spawnRipple(strength = 0.6) {
     const feedback = effectiveFeedback();
     const pulse = {
@@ -1177,7 +1195,7 @@
 
     if (sampleValues) {
       sampleValues.forEach((value, index) => {
-        bandUniforms[index] = bandUniforms[index] * 0.58 + value * 0.42;
+        bandUniforms[index] = bandUniforms[index] * 0.52 + applyBandResponse(value, index) * 0.48;
       });
       if (nowSeconds - lastSampleTempoBeat > 0.48) {
         registerTempoOnset(nowSeconds, 0.86);
@@ -1186,7 +1204,8 @@
     } else if (live) {
       analyser.getByteFrequencyData(frequencyData);
       ranges.forEach(([from, to], index) => {
-        bandUniforms[index] = bandUniforms[index] * 0.7 + bandEnergy(from, to) * 0.3;
+        bandUniforms[index] =
+          bandUniforms[index] * 0.62 + applyBandResponse(bandEnergy(from, to), index) * 0.38;
       });
     } else {
       ranges.forEach((_, index) => {
@@ -1203,16 +1222,16 @@
     const lowMid = bandUniforms[3] * 0.66 + bandUniforms[4] * 0.34;
     const mid = bandUniforms[4] * 0.42 + bandUniforms[5] * 0.38 + bandUniforms[6] * 0.2;
     const liveHigh = sampleValues
-      ? sampleValues[7]
+      ? applyBandResponse(sampleValues[7], 7)
       : live
-        ? bandEnergy(3500, 9500)
+        ? applyBandResponse(bandEnergy(3500, 9500), 7)
         : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
 
-    state.subBass = state.subBass * 0.76 + subBass * 0.24;
-    state.bass = state.bass * 0.78 + bass * 0.22;
-    state.lowMid = state.lowMid * 0.8 + lowMid * 0.2;
-    state.mid = state.mid * 0.84 + mid * 0.16;
-    state.high = state.high * 0.86 + liveHigh * 0.14;
+    state.subBass = state.subBass * 0.68 + subBass * 0.32;
+    state.bass = state.bass * 0.7 + bass * 0.3;
+    state.lowMid = state.lowMid * 0.72 + lowMid * 0.28;
+    state.mid = state.mid * 0.76 + mid * 0.24;
+    state.high = state.high * 0.8 + liveHigh * 0.2;
 
     if (state.syntheticStress) {
       state.subBass = 0.82;
@@ -1235,15 +1254,15 @@
     const variance =
       energyHistory.reduce((sum, value) => sum + (value - mean) ** 2, 0) / energyHistory.length;
     const deviation = Math.sqrt(variance);
-    const rippleThreshold = Math.max(0.13, mean + deviation * 0.72);
+    const rippleThreshold = Math.max(0.095, mean + deviation * (0.58 - state.lowSensitivity * 0.12));
 
     if (
       live &&
-      nowSeconds - lastRippleAt > 0.22 &&
+      nowSeconds - lastRippleAt > 0.18 &&
       lowMidEnergy > rippleThreshold &&
-      lowJump > 0.018
+      lowJump > 0.012
     ) {
-      spawnRipple(clamp(lowMidEnergy * 1.38));
+      spawnRipple(clamp(lowMidEnergy * (1.32 + state.lowSensitivity * 0.55)));
       registerTempoOnset(
         nowSeconds,
         clamp(0.2 + lowMidEnergy * 0.72 + state.subBass * 0.42 + Math.max(lowJump, subJump) * 4.2),
@@ -1255,16 +1274,22 @@
       if (state.bpmConfidence < 0.08 && nowSeconds - lastAudioAt > 8) state.bpm = 0;
     }
 
-    const subBassHit = state.subBass > Math.max(0.2, mean * 0.92) && subJump > 0.026;
+    const subBassHit =
+      state.subBass > Math.max(0.16, mean * 0.84) && subJump > 0.017 - state.lowSensitivity * 0.006;
     const fallbackHit =
-      !subBassHit && lowMidEnergy > mean + deviation * 1.35 && lowJump > 0.038;
-    if (live && nowSeconds - lastImpactAt > 0.52 && (subBassHit || fallbackHit)) {
-      spawnImpact(clamp((subBassHit ? state.subBass : lowMidEnergy) * 1.45));
+      !subBassHit && lowMidEnergy > mean + deviation * 1.08 && lowJump > 0.025;
+    if (live && nowSeconds - lastImpactAt > 0.42 && (subBassHit || fallbackHit)) {
+      spawnImpact(clamp((subBassHit ? state.subBass : lowMidEnergy) * (1.38 + state.lowSensitivity * 0.42)));
       lastImpactAt = nowSeconds;
     }
 
-    if (live && nowSeconds - lastMeteorAt > 0.66 && state.high > 0.16 && highJump > 0.018) {
-      spawnMeteor(clamp(state.high * 1.65));
+    if (
+      live &&
+      nowSeconds - lastMeteorAt > 0.5 &&
+      state.high > 0.105 + (1 - state.highSensitivity) * 0.05 &&
+      highJump > 0.011
+    ) {
+      spawnMeteor(clamp(state.high * (1.48 + state.highSensitivity * 0.72)));
       lastMeteorAt = nowSeconds;
     }
 
@@ -1279,6 +1304,7 @@
     previousHigh = state.high;
 
     coreUniforms.uBass.value = state.bass;
+    coreUniforms.uLowMid.value = state.lowMid;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
     atmosphereUniforms.uHigh.value = state.high;
@@ -1555,6 +1581,9 @@
     setParam("feedback", 0.42 + Math.random() * 0.48);
     setParam("warp", 0.18 + Math.random() * 0.58);
     setParam("size", 0.34 + Math.random() * 0.36);
+    setParam("lowSensitivity", 0.64 + Math.random() * 0.34);
+    setParam("midSensitivity", 0.58 + Math.random() * 0.34);
+    setParam("highSensitivity", 0.52 + Math.random() * 0.38);
     setParam("hue", 0.62 + Math.random() * 0.38);
     setParam("intensity", 0.66 + Math.random() * 0.3);
   }
