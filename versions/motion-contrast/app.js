@@ -22,10 +22,10 @@
   const FIELD_HALF = ((GRID_SIZE - 1) * FIELD_SPACING) / 2;
   const FORM_CANVAS_SIZE = 160;
   const MOTION_TUNING = Object.freeze({
-    rippleCooldown: 0.16,
-    rippleDensityFloor: 0.65,
-    impactCooldown: 0.42,
-    impactDensityFloor: 2.2,
+    rippleCooldown: 0.14,
+    rippleDensityFloor: 0.52,
+    impactCooldown: 0.3,
+    impactDensityFloor: 1.35,
     meteorCooldown: 0.45,
     meteorDensityFloor: 1.5,
   });
@@ -322,10 +322,9 @@
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03;
       float audioLift = pow(max(0.0, bandEnergy), 1.18)
         * (0.9 + uIntensity * 4.4)
-        * (1.0 + uExcursion * 0.82);
-      float centerDecay = mix(0.17, 0.092, uExcursion);
-      float centerForce = exp(-distanceFromCenter * centerDecay)
-        * (uBass * 5.8 + uLowMid * 2.4 + uExcursion * 7.4);
+        * (1.0 + uExcursion * 0.12);
+      float centerForce = exp(-distanceFromCenter * 0.17)
+        * (uBass * 5.8 + uLowMid * 2.4 + uExcursion * 1.2);
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
@@ -371,8 +370,8 @@
           * max(0.0, sin((radius - distanceFromCenter) * 2.25))
           * exp(-(radius - distanceFromCenter) * 0.19);
         float fade = pow(max(0.0, 1.0 - p), 0.55) * pulse.w;
-        rippleLift += (shell * 3.7 + wake * 0.46) * fade;
-        rippleFlash += shell * fade;
+        rippleLift += (shell * 5.2 + wake * 0.62) * fade;
+        rippleFlash += shell * fade * 1.05;
       }
 
       for (int i = 0; i < 8; i++) {
@@ -383,13 +382,12 @@
         float shell = exp(-pow((d - radius) / (0.42 + p * 0.74), 2.0));
         float core = exp(-d * 0.7) * max(0.0, 1.0 - p * 2.8);
         float fade = pow(max(0.0, 1.0 - p), 0.72) * impact.w;
-        impactLift += (shell * 5.2 - core * 2.1) * fade;
-        impactFlash += (shell * 1.35 + core) * fade;
+        impactLift += (shell * 6.4 - core * 2.4) * fade;
+        impactFlash += (shell * 1.55 + core) * fade;
       }
 
       float totalLift = idle + audioLift + centerForce + rippleLift + impactLift;
       totalLift = sign(totalLift) * log(1.0 + abs(totalLift) * 0.82) * 1.55;
-      totalLift *= 1.0 + uExcursion * 0.68;
       field.y += totalLift;
       field.xz += vec2(
         sin(field.z * 0.3 + uTime + aSeed * 4.0),
@@ -421,7 +419,7 @@
           + rippleFlash * 0.78
           + impactFlash * 0.96
           + uBass * 0.16
-          + uExcursion * 0.12,
+          + uExcursion * 0.03,
         0.0,
         2.2
       );
@@ -1215,10 +1213,10 @@
     });
   }
 
-  function spawnRipple(strength = 0.6, source = "audio") {
+  function spawnRipple(strength = 0.6, source = "audio", delay = 0) {
     const feedback = effectiveFeedback();
     const pulse = {
-      age: 0,
+      age: -Math.max(0, delay),
       life: 1.75 + feedback * 1.05,
       strength: clamp(strength, 0.12, 1),
     };
@@ -1228,14 +1226,14 @@
     if (source === "density-floor") eventCounters.densityFloorRipples += 1;
   }
 
-  function spawnImpact(strength = 0.75, x, z, source = "audio") {
+  function spawnImpact(strength = 0.75, x, z, source = "audio", delay = 0) {
     const feedback = effectiveFeedback();
     const radius = FIELD_HALF * 0.82 * Math.sqrt(Math.random());
     const angle = Math.random() * Math.PI * 2;
     const impact = {
       x: Number.isFinite(x) ? x : Math.cos(angle) * radius,
       z: Number.isFinite(z) ? z : Math.sin(angle) * radius,
-      age: 0,
+      age: -Math.max(0, delay),
       life: 1.28 + feedback * 0.55,
       strength: clamp(strength, 0.18, 1),
     };
@@ -1428,6 +1426,9 @@
           clamp(0.2 + state.lowMid * 0.9 + lowFlux * 3.4) *
           (source === "density-floor" ? 0.68 : 1);
         spawnRipple(strength, source);
+        if (rippleOnset && motionExcursion > 0.5) {
+          spawnRipple(strength * 0.72, "echo-layer", 0.13);
+        }
         if (rippleOnset) {
           registerTempoOnset(
             nowSeconds,
@@ -1456,6 +1457,9 @@
           clamp(0.24 + mappedSource + sourceFlux * 3) *
           (source === "density-floor" ? 0.7 : 1);
         spawnImpact(strength, undefined, undefined, source);
+        if (source === "audio" && motionExcursion > 0.55) {
+          spawnImpact(strength * 0.72, undefined, undefined, "echo-layer", 0.11);
+        }
         lastImpactAt = nowSeconds;
       }
     }
@@ -1549,7 +1553,7 @@
         0,
         0,
         pulse ? clamp(pulse.age / pulse.life) : 2,
-        pulse ? pulse.strength * (state.echo ? 1 : 0) : 0,
+        pulse && pulse.age >= 0 ? pulse.strength * (state.echo ? 1 : 0) : 0,
       );
     }
     for (let index = 0; index < IMPACT_SLOTS; index += 1) {
@@ -1558,7 +1562,7 @@
         impact?.x || 0,
         impact?.z || 0,
         impact ? clamp(impact.age / impact.life) : 2,
-        impact ? impact.strength : 0,
+        impact && impact.age >= 0 ? impact.strength : 0,
       );
     }
     for (let index = 0; index < METEOR_SLOTS; index += 1) {
