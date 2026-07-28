@@ -321,7 +321,7 @@
         + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.05
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03;
       float audioLift = pow(max(0.0, bandEnergy), 1.18)
-        * (0.9 + uIntensity * 4.4)
+        * (0.35 + uIntensity * 1.35)
         * (1.0 + uExcursion * 0.12);
       float centerForce = exp(-distanceFromCenter * 0.17)
         * (uBass * 5.8 + uLowMid * 2.4 + uExcursion * 1.2);
@@ -370,8 +370,8 @@
           * max(0.0, sin((radius - distanceFromCenter) * 2.25))
           * exp(-(radius - distanceFromCenter) * 0.19);
         float fade = pow(max(0.0, 1.0 - p), 0.55) * pulse.w;
-        rippleLift += (shell * 5.2 + wake * 0.62) * fade;
-        rippleFlash += shell * fade * 1.05;
+        rippleLift += (shell * 6.2 + wake * 0.68) * fade;
+        rippleFlash += shell * fade * 1.18;
       }
 
       for (int i = 0; i < 8; i++) {
@@ -382,8 +382,8 @@
         float shell = exp(-pow((d - radius) / (0.42 + p * 0.74), 2.0));
         float core = exp(-d * 0.7) * max(0.0, 1.0 - p * 2.8);
         float fade = pow(max(0.0, 1.0 - p), 0.72) * impact.w;
-        impactLift += (shell * 6.4 - core * 2.4) * fade;
-        impactFlash += (shell * 1.55 + core) * fade;
+        impactLift += (shell * 7.5 - core * 2.5) * fade;
+        impactFlash += (shell * 1.72 + core) * fade;
       }
 
       float totalLift = idle + audioLift + centerForce + rippleLift + impactLift;
@@ -1428,6 +1428,7 @@
         spawnRipple(strength, source);
         if (rippleOnset && motionExcursion > 0.5) {
           spawnRipple(strength * 0.72, "echo-layer", 0.13);
+          spawnRipple(strength * 0.5, "echo-layer", 0.25);
         }
         if (rippleOnset) {
           registerTempoOnset(
@@ -1459,6 +1460,7 @@
         spawnImpact(strength, undefined, undefined, source);
         if (source === "audio" && motionExcursion > 0.55) {
           spawnImpact(strength * 0.72, undefined, undefined, "echo-layer", 0.11);
+          spawnImpact(strength * 0.5, undefined, undefined, "echo-layer", 0.23);
         }
         lastImpactAt = nowSeconds;
       }
