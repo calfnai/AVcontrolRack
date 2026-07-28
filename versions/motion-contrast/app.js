@@ -308,6 +308,7 @@
     uLowMid: { value: 0 },
     uMid: { value: 0 },
     uHigh: { value: 0 },
+    uActivity: { value: 0 },
     uExcursion: { value: 0 },
     uIntensity: { value: state.intensity },
     uSize: { value: state.size },
@@ -338,6 +339,7 @@
     uniform float uLowMid;
     uniform float uMid;
     uniform float uHigh;
+    uniform float uActivity;
     uniform float uExcursion;
     uniform float uIntensity;
     uniform float uSize;
@@ -375,9 +377,12 @@
       float bandEnergy = readBand(aBand);
       float radialFade = 1.0 - smoothstep(18.2, 23.0, distanceFromCenter);
       float densityGate = 1.0 - smoothstep(0.2 + uDensity * 0.74, 1.0, aSeed);
-      float idle = 0.1
-        + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.05
-        + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03;
+      float idle = 0.018
+        + uActivity * (
+          0.045
+          + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.05
+          + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03
+        );
       float audioLift = pow(max(0.0, bandEnergy), 1.18)
         * (0.35 + uIntensity * 1.35)
         * (1.0 + uExcursion * 0.12);
@@ -602,6 +607,7 @@
     uTime: { value: 0 },
     uHigh: { value: 0 },
     uHighSensitivity: { value: state.highSensitivity },
+    uActivity: { value: 0 },
     uIntensity: { value: state.intensity },
     uHue: { value: state.hue },
     uSceneStyle: { value: state.scene },
@@ -619,6 +625,7 @@
     uniform float uTime;
     uniform float uHigh;
     uniform float uHighSensitivity;
+    uniform float uActivity;
     uniform float uIntensity;
     uniform float uTunnelDirection;
     uniform float uTunnelSpeed;
@@ -673,7 +680,7 @@
           + wave * (0.24 + uHighSensitivity * 0.54 + uHigh * 1.25);
         transformed.y = 7.0 + abs(position.y) * 0.62
           + sin(depth * 0.21 + lane * 12.566) * (0.28 + uHigh * 0.52);
-        vAlpha = (0.035 + uHighSensitivity * 0.09 + uHigh * 0.24)
+        vAlpha = (0.025 + uActivity * (0.035 + uHighSensitivity * 0.09 + uHigh * 0.24))
           * (0.35 + aSeed * 0.65);
       }
 
@@ -874,6 +881,8 @@
   let pointerX = 0.5;
   let pointerY = 0.48;
   let time = 0;
+  let visualTime = 0;
+  let audioActivity = 0;
   let lastFrameAt = performance.now();
   let lastAudioAt = 0;
   let lastRippleAt = -10;
@@ -892,7 +901,6 @@
   let statsUpdatedAt = 0;
   let calibrationStartedAt = performance.now();
   let lowFpsDuration = 0;
-  let idlePulseAt = -10;
 
   function configureQuality(profileName) {
     const resolvedName = QUALITY_PROFILES[profileName] ? profileName : "laptop";
@@ -1387,13 +1395,7 @@
         rawBandValues[index] = bandEnergy(from, to);
       });
     } else {
-      ranges.forEach((_, index) => {
-        const wave =
-          0.045 +
-          Math.max(0, Math.sin(time * (0.42 + index * 0.055) - index * 0.74)) *
-            (0.025 + (7 - index) * 0.004);
-        rawBandValues[index] = wave;
-      });
+      rawBandValues.fill(0);
     }
 
     rawBandValues.forEach((value, index) => {
@@ -1416,7 +1418,7 @@
       : Math.max(rawBandValues[7], rawBandValues[6] * 0.72);
     const liveHigh = live
       ? applyBandResponse(rawExtendedHigh, 7)
-      : 0.035 + Math.max(0, Math.sin(time * 0.71)) * 0.03;
+      : 0;
 
     state.subBass = followEnvelope(state.subBass, subBass, audioDelta, 0.055, 0.18);
     state.bass = followEnvelope(state.bass, bass, audioDelta, 0.055, 0.18);
@@ -1503,7 +1505,20 @@
     else if (rawHigh < 0.045 || rawHigh < slowEnvelope.high * 0.72) {
       transientArmed.high = true;
     }
-    const audible = rawLowMid > 0.018 || rawSubBass > 0.018 || rawHigh > 0.01;
+    const activitySignal = Math.max(rawSubBass, rawLowMid, rawHigh * 1.35);
+    const activityTarget = state.syntheticStress
+      ? 1
+      : live
+        ? clamp((activitySignal - 0.035) / 0.14)
+        : 0;
+    audioActivity = followEnvelope(
+      audioActivity,
+      activityTarget,
+      audioDelta,
+      0.04,
+      0.62,
+    );
+    const audible = activityTarget > 0.04;
     const rippleActive = rawLowMid > Math.max(0.06, lowStats.mean * 0.72);
     const impactActive =
       rawSubBass > Math.max(0.055, subStats.mean * 0.78) ||
@@ -1597,14 +1612,6 @@
       }
     }
 
-    if (!live && nowSeconds - idlePulseAt > 3.2) {
-      spawnRipple(0.26, "idle");
-      if (Math.floor(nowSeconds / 7) !== Math.floor(idlePulseAt / 7)) {
-        spawnImpact(0.26, undefined, undefined, "idle");
-      }
-      idlePulseAt = nowSeconds;
-    }
-
     recordChannel(lowMidHistory, rawLowMid);
     recordChannel(subBassHistory, rawSubBass);
     recordChannel(highHistory, rawHigh);
@@ -1624,6 +1631,9 @@
       impactThreshold,
       meteorThreshold,
       audible,
+      activitySignal,
+      activityTarget,
+      audioActivity,
     });
 
     coreUniforms.uSubBass.value = state.subBass;
@@ -1631,8 +1641,10 @@
     coreUniforms.uLowMid.value = state.lowMid;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
+    coreUniforms.uActivity.value = audioActivity;
     coreUniforms.uExcursion.value = motionExcursion;
     atmosphereUniforms.uHigh.value = state.high;
+    atmosphereUniforms.uActivity.value = audioActivity;
     dom.bassReadout.textContent = state.subBass.toFixed(2);
     dom.midReadout.textContent = state.lowMid.toFixed(2);
     dom.highReadout.textContent = state.high.toFixed(2);
@@ -1756,8 +1768,15 @@
       time += delta * (0.72 + state.speed * 0.9);
       updateAudio(now / 1000);
       updateEvents(delta);
+      visualTime +=
+        delta *
+        (0.72 + state.speed * 0.9) *
+        (audioActivity < 0.006 ? 0 : audioActivity);
       const bpm = state.bpm || 72;
-      rotationTarget = (bpm / 60) * (0.012 + state.speed * 0.034);
+      rotationTarget =
+        (bpm / 60) *
+        (0.012 + state.speed * 0.034) *
+        (audioActivity < 0.006 ? 0 : audioActivity);
       rotation += delta * rotationTarget;
       state.morph += (state.morphTarget - state.morph) * Math.min(1, delta * 2.8);
     }
@@ -1765,7 +1784,7 @@
     const preset = scenePreset();
     const sceneHue = fract(state.hue + preset.hueOffset);
     const sceneWarp = clamp(state.warp * preset.warpScale, 0, 1);
-    coreUniforms.uTime.value = time;
+    coreUniforms.uTime.value = visualTime;
     coreUniforms.uIntensity.value = state.intensity;
     coreUniforms.uSize.value = state.size;
     coreUniforms.uWarp.value = sceneWarp;
@@ -1779,24 +1798,24 @@
       ((state.mode === "form" && state.effect > 0 ? 1 : 0) -
         coreUniforms.uEffectAmount.value) *
       Math.min(1, delta * 2.2);
-    atmosphereUniforms.uTime.value = time;
+    atmosphereUniforms.uTime.value = visualTime;
     atmosphereUniforms.uHighSensitivity.value = state.highSensitivity;
     atmosphereUniforms.uIntensity.value = state.intensity;
     atmosphereUniforms.uHue.value = sceneHue;
     atmosphereUniforms.uSceneStyle.value = state.scene;
     atmosphereUniforms.uTunnelDirection.value = preset.tunnelDirection;
     atmosphereUniforms.uTunnelSpeed.value = preset.tunnelSpeed;
-    postUniforms.uTime.value = time;
+    postUniforms.uTime.value = visualTime;
 
     coreField.visible = !state.blackout;
     atmosphere.visible = !state.blackout;
     const desiredCoreRotation =
-      state.mode === "form" ? Math.sin(time * 0.22) * 0.08 : rotation;
+      state.mode === "form" ? Math.sin(visualTime * 0.22) * 0.08 : rotation;
     coreField.rotation.y +=
       (desiredCoreRotation - coreField.rotation.y) * Math.min(1, delta * 3.6);
     atmosphere.rotation.y = rotation * 0.58;
 
-    const cameraPhase = time * preset.orbitRate + state.scene * 0.73;
+    const cameraPhase = visualTime * preset.orbitRate + state.scene * 0.73;
     const pointerOrbit = (pointerX - 0.5) * 5.5;
     const targetX =
       preset.camera[0] + Math.sin(cameraPhase) * preset.orbitRadius + pointerOrbit;
@@ -2066,6 +2085,11 @@
       },
       bpm: state.bpm,
       bpmConfidence: state.bpmConfidence,
+      visualClock: {
+        time: visualTime,
+        activity: audioActivity,
+        rotation,
+      },
       scene: state.scene,
       sceneName: scenePreset().name,
       camera: {
@@ -2126,8 +2150,6 @@
   setEffect(0);
   setMode("range");
   applyLanguage(state.language);
-  spawnRipple(0.48);
-  spawnImpact(0.35, -4.8, 2.5);
   connectMidi();
   resize();
   calibrationStartedAt = performance.now();
