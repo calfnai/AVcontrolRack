@@ -251,6 +251,7 @@
     uLowMid: { value: 0 },
     uMid: { value: 0 },
     uHigh: { value: 0 },
+    uExcursion: { value: 0 },
     uIntensity: { value: state.intensity },
     uSize: { value: state.size },
     uWarp: { value: state.warp },
@@ -279,6 +280,7 @@
     uniform float uLowMid;
     uniform float uMid;
     uniform float uHigh;
+    uniform float uExcursion;
     uniform float uIntensity;
     uniform float uSize;
     uniform float uWarp;
@@ -318,8 +320,12 @@
       float idle = 0.1
         + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.05
         + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03;
-      float audioLift = pow(max(0.0, bandEnergy), 1.18) * (0.9 + uIntensity * 4.4);
-      float centerForce = exp(-distanceFromCenter * 0.17) * (uBass * 5.8 + uLowMid * 2.4);
+      float audioLift = pow(max(0.0, bandEnergy), 1.18)
+        * (0.9 + uIntensity * 4.4)
+        * (1.0 + uExcursion * 0.82);
+      float centerDecay = mix(0.17, 0.092, uExcursion);
+      float centerForce = exp(-distanceFromCenter * centerDecay)
+        * (uBass * 5.8 + uLowMid * 2.4 + uExcursion * 7.4);
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
@@ -383,6 +389,7 @@
 
       float totalLift = idle + audioLift + centerForce + rippleLift + impactLift;
       totalLift = sign(totalLift) * log(1.0 + abs(totalLift) * 0.82) * 1.55;
+      totalLift *= 1.0 + uExcursion * 0.68;
       field.y += totalLift;
       field.xz += vec2(
         sin(field.z * 0.3 + uTime + aSeed * 4.0),
@@ -410,7 +417,11 @@
       vec3 transformed = mix(field, form, uMorph);
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
       float energy = clamp(
-        bandEnergy * 0.62 + rippleFlash * 0.78 + impactFlash * 0.96 + uBass * 0.16,
+        bandEnergy * 0.62
+          + rippleFlash * 0.78
+          + impactFlash * 0.96
+          + uBass * 0.16
+          + uExcursion * 0.12,
         0.0,
         2.2
       );
@@ -755,6 +766,8 @@
     subFlux: 0,
     lowFlux: 0,
     highFlux: 0,
+    excursionTarget: 0,
+    excursion: 0,
     rippleThreshold: 0,
     impactThreshold: 0,
     meteorThreshold: 0,
@@ -763,6 +776,7 @@
   const fastEnvelope = { subBass: 0, lowMid: 0, high: 0 };
   const slowEnvelope = { subBass: 0, lowMid: 0, high: 0 };
   const transientArmed = { subBass: true, lowMid: true, high: true };
+  let motionExcursion = 0;
 
   let audioContext;
   let analyser;
@@ -1347,6 +1361,17 @@
     const subFlux = Math.max(0, fastEnvelope.subBass - slowEnvelope.subBass);
     const lowFlux = Math.max(0, fastEnvelope.lowMid - slowEnvelope.lowMid);
     const highFlux = Math.max(0, fastEnvelope.high - slowEnvelope.high);
+    const excursionTarget = clamp(
+      (lowFlux * 1.1 + subFlux * 0.85 + highFlux * 0.15) *
+        (3.6 + state.lowSensitivity * 2.4),
+    );
+    motionExcursion = followEnvelope(
+      motionExcursion,
+      excursionTarget,
+      audioDelta,
+      0.018,
+      0.09,
+    );
     const lowStats = channelStats(lowMidHistory, rawLowMid || 0.03);
     const subStats = channelStats(subBassHistory, rawSubBass || 0.025);
     const highStats = channelStats(highHistory, rawHigh || 0.018);
@@ -1469,6 +1494,8 @@
       subFlux,
       lowFlux,
       highFlux,
+      excursionTarget,
+      excursion: motionExcursion,
       rippleThreshold,
       impactThreshold,
       meteorThreshold,
@@ -1479,6 +1506,7 @@
     coreUniforms.uLowMid.value = state.lowMid;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
+    coreUniforms.uExcursion.value = motionExcursion;
     atmosphereUniforms.uHigh.value = state.high;
     dom.bassReadout.textContent = state.bass.toFixed(2);
     dom.midReadout.textContent = state.mid.toFixed(2);
