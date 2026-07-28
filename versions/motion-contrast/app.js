@@ -26,8 +26,8 @@
     rippleDensityFloor: 0.52,
     impactCooldown: 0.3,
     impactDensityFloor: 1.35,
-    meteorCooldown: 0.45,
-    meteorDensityFloor: 1.5,
+    meteorCooldown: 0.32,
+    meteorDensityFloor: 1.1,
   });
 
   const QUALITY_PROFILES = {
@@ -81,64 +81,120 @@
       hueOffset: 0,
       warpScale: 1,
       feedbackOffset: 0,
-      camera: [0, 9.6, 27.5],
+      camera: [0, 11.4, 28.2],
       lookAt: [0, 1.3, 0],
+      orbitRate: 0.1,
+      orbitRadius: 1.8,
+      orbitDepth: 0.8,
+      cameraBob: 0.35,
+      cameraFollow: 1.8,
+      tunnelDirection: 1,
+      tunnelSpeed: 0.055,
     },
     {
       name: "SILK CURRENT",
       hueOffset: -0.08,
       warpScale: 1.26,
       feedbackOffset: 0.12,
-      camera: [-6.5, 7.6, 25.8],
-      lookAt: [-1.2, 1.15, 0.4],
+      camera: [-8.5, 15.8, 23.8],
+      lookAt: [-1.2, 1.5, 0.4],
+      orbitRate: 0.2,
+      orbitRadius: 3.6,
+      orbitDepth: 1.8,
+      cameraBob: 1.0,
+      cameraFollow: 2.8,
+      tunnelDirection: -1,
+      tunnelSpeed: 0.07,
     },
     {
       name: "LIQUID LENS",
       hueOffset: 0.1,
       warpScale: 0.72,
       feedbackOffset: -0.06,
-      camera: [0, 13.2, 24.2],
-      lookAt: [0, 1.7, 0],
+      camera: [0, 22.5, 20.5],
+      lookAt: [0, 0.8, 0],
+      orbitRate: 0.12,
+      orbitRadius: 2.2,
+      orbitDepth: 1.2,
+      cameraBob: 0.5,
+      cameraFollow: 2.0,
+      tunnelDirection: 1,
+      tunnelSpeed: 0.05,
     },
     {
       name: "ORBITAL",
       hueOffset: -0.2,
       warpScale: 1.42,
       feedbackOffset: 0.04,
-      camera: [8.8, 8.4, 25.4],
+      camera: [10.5, 11.5, 23.8],
       lookAt: [0.5, 1.25, -0.5],
+      orbitRate: 0.48,
+      orbitRadius: 6.2,
+      orbitDepth: 3.8,
+      cameraBob: 1.65,
+      cameraFollow: 5.4,
+      tunnelDirection: 1,
+      tunnelSpeed: 0.12,
     },
     {
       name: "AURORA",
       hueOffset: -0.34,
       warpScale: 1.58,
       feedbackOffset: 0.16,
-      camera: [-9.5, 6.7, 24.0],
-      lookAt: [-0.6, 1.8, 0.2],
+      camera: [-12.5, 18.2, 21.2],
+      lookAt: [-0.6, 1.2, 0.2],
+      orbitRate: 0.26,
+      orbitRadius: 4.6,
+      orbitDepth: 2.4,
+      cameraBob: 1.2,
+      cameraFollow: 3.4,
+      tunnelDirection: -1,
+      tunnelSpeed: 0.085,
     },
     {
       name: "MONOLITH",
       hueOffset: 0.18,
       warpScale: 0.42,
       feedbackOffset: -0.14,
-      camera: [0, 8.2, 29.0],
+      camera: [0, 13.8, 31.0],
       lookAt: [0, 2.1, 0],
+      orbitRate: 0.065,
+      orbitRadius: 0.9,
+      orbitDepth: 0.45,
+      cameraBob: 0.22,
+      cameraFollow: 1.35,
+      tunnelDirection: -1,
+      tunnelSpeed: 0.04,
     },
     {
       name: "SOLAR BLOOM",
       hueOffset: 0.06,
       warpScale: 0.86,
       feedbackOffset: 0.1,
-      camera: [7.2, 11.7, 25.2],
-      lookAt: [0.8, 1.6, -0.8],
+      camera: [9.0, 20.2, 21.8],
+      lookAt: [0.8, 1.0, -0.8],
+      orbitRate: 0.32,
+      orbitRadius: 4.2,
+      orbitDepth: 2.8,
+      cameraBob: 1.4,
+      cameraFollow: 4.1,
+      tunnelDirection: 1,
+      tunnelSpeed: 0.1,
     },
     {
       name: "DEEP SPACE",
       hueOffset: -0.14,
       warpScale: 1.18,
       feedbackOffset: 0.22,
-      camera: [-4.8, 4.9, 23.6],
+      camera: [-6.8, 7.2, 21.5],
       lookAt: [0, 1.0, -2.2],
+      orbitRate: 0.58,
+      orbitRadius: 7.4,
+      orbitDepth: 5.0,
+      cameraBob: 1.1,
+      cameraFollow: 6.0,
+      tunnelDirection: -1,
+      tunnelSpeed: 0.15,
     },
   ];
 
@@ -247,6 +303,7 @@
   const coreUniforms = {
     uTime: { value: 0 },
     uBands: { value: bandUniforms },
+    uSubBass: { value: 0 },
     uBass: { value: 0 },
     uLowMid: { value: 0 },
     uMid: { value: 0 },
@@ -276,6 +333,7 @@
 
     uniform float uTime;
     uniform float uBands[8];
+    uniform float uSubBass;
     uniform float uBass;
     uniform float uLowMid;
     uniform float uMid;
@@ -324,7 +382,7 @@
         * (0.35 + uIntensity * 1.35)
         * (1.0 + uExcursion * 0.12);
       float centerForce = exp(-distanceFromCenter * 0.17)
-        * (uBass * 5.8 + uLowMid * 2.4 + uExcursion * 1.2);
+        * (uBass * 3.8 + uLowMid * 0.8 + uExcursion * 1.0);
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
@@ -359,6 +417,7 @@
       float rippleFlash = 0.0;
       float impactLift = 0.0;
       float impactFlash = 0.0;
+      float impactQuake = 0.0;
 
       for (int i = 0; i < 6; i++) {
         vec4 pulse = uRipples[i];
@@ -382,11 +441,16 @@
         float shell = exp(-pow((d - radius) / (0.42 + p * 0.74), 2.0));
         float core = exp(-d * 0.7) * max(0.0, 1.0 - p * 2.8);
         float fade = pow(max(0.0, 1.0 - p), 0.72) * impact.w;
+        float aftershock = sin(d * 2.5 - p * 34.0)
+          * exp(-d * 0.13)
+          * exp(-p * 2.2)
+          * impact.w;
         impactLift += (shell * 7.5 - core * 2.5) * fade;
         impactFlash += (shell * 1.72 + core) * fade;
+        impactQuake += aftershock * (0.18 + uSubBass * 0.72);
       }
 
-      float totalLift = idle + audioLift + centerForce + rippleLift + impactLift;
+      float totalLift = idle + audioLift + centerForce + rippleLift + impactLift + impactQuake;
       totalLift = sign(totalLift) * log(1.0 + abs(totalLift) * 0.82) * 1.55;
       field.y += totalLift;
       field.xz += vec2(
@@ -537,9 +601,12 @@
   const atmosphereUniforms = {
     uTime: { value: 0 },
     uHigh: { value: 0 },
+    uHighSensitivity: { value: state.highSensitivity },
     uIntensity: { value: state.intensity },
     uHue: { value: state.hue },
     uSceneStyle: { value: state.scene },
+    uTunnelDirection: { value: 1 },
+    uTunnelSpeed: { value: 0.055 },
     uPointScale: { value: 1 },
     uMeteors: { value: meteorUniforms },
   };
@@ -551,7 +618,10 @@
     attribute float aLane;
     uniform float uTime;
     uniform float uHigh;
+    uniform float uHighSensitivity;
     uniform float uIntensity;
+    uniform float uTunnelDirection;
+    uniform float uTunnelSpeed;
     uniform float uPointScale;
     uniform vec4 uMeteors[3];
     varying float vAlpha;
@@ -571,10 +641,10 @@
       if (aKind > 0.5) {
         vec4 meteor = meteorForLane(aLane);
         float head = meteor.z;
-        float trail = aSeed * 0.22;
+        float trail = aSeed * 0.16;
         float p = head - trail;
         if (meteor.w > 0.0 && p > 0.0 && p < 1.0) {
-          vec3 start = vec3(meteor.x - 4.2, 16.4 + aLane * 1.2, meteor.y - 6.8);
+          vec3 start = vec3(meteor.x - 5.2, 20.5 + aLane * 1.4, meteor.y - 8.4);
           vec3 end = vec3(meteor.x, 0.35, meteor.y);
           transformed = mix(start, end, p);
           transformed.x += (aSeed - 0.5) * 0.06;
@@ -585,11 +655,26 @@
           transformed = vec3(0.0, -200.0, 0.0);
         }
       } else {
-        float drift = uTime * (0.12 + aSeed * 0.14);
-        transformed.y = mod(position.y + drift * (1.0 + uHigh * 2.0), 17.0) - 1.0;
-        transformed.x += sin(drift + aSeed * 23.0) * 0.8;
-        transformed.z += cos(drift * 0.7 + aSeed * 19.0) * 0.7;
-        vAlpha = (0.08 + uHigh * 0.22) * (0.35 + aSeed * 0.65);
+        float lane = floor(aSeed * 12.0) / 12.0;
+        float travel = fract(
+          position.z * 0.018
+          + aSeed * 0.41
+          + uTime * uTunnelSpeed * uTunnelDirection
+            * (0.42 + uHighSensitivity * 1.35 + uHigh * 1.8)
+        );
+        float depth = mix(-27.0, 19.0, travel);
+        float wave = sin(
+          depth * 0.42
+          - uTime * (0.72 + uHigh * 1.8)
+          + lane * 6.28318
+        );
+        transformed.z = depth;
+        transformed.x = position.x * 0.9
+          + wave * (0.24 + uHighSensitivity * 0.54 + uHigh * 1.25);
+        transformed.y = 7.0 + abs(position.y) * 0.62
+          + sin(depth * 0.21 + lane * 12.566) * (0.28 + uHigh * 0.52);
+        vAlpha = (0.035 + uHighSensitivity * 0.09 + uHigh * 0.24)
+          * (0.35 + aSeed * 0.65);
       }
 
       vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
@@ -794,6 +879,7 @@
   let lastRippleAt = -10;
   let lastImpactAt = -10;
   let lastMeteorAt = -10;
+  let lastSubBassAt = performance.now() / 1000;
   let lastAudioUpdateAt = 0;
   let rotation = 0;
   let rotationTarget = 0;
@@ -931,9 +1017,12 @@
     setText(".control-section:nth-of-type(4) .section-label", "PARTICLE FORM", "粒子形态");
     setText(".quality-section .section-label", "PERFORMANCE MODE", "性能档位");
     setText(".sliders .section-label", "FIELD", "场域参数");
-    setText("[data-param='lowSensitivity'] + small", "Low and sub energy: centre force, ripples and hidden impact hits.", "低频和重低频：中心力量、涟漪和隐形冲击。");
-    setText("[data-param='midSensitivity'] + small", "Low-mid body: field breathing and broad surface response.", "中频身体感：场域呼吸和大面积响应。");
-    setText("[data-param='highSensitivity'] + small", "High transients: meteor rate, white heat and atmosphere shimmer.", "高频瞬态：流星频率、白热和氛围闪烁。");
+    setText("label:has([data-param='lowSensitivity']) > span", "Sub / Quake", "重低音 / 震动");
+    setText("label:has([data-param='midSensitivity']) > span", "Low-mid / Wave", "中低音 / 大涟漪");
+    setText("label:has([data-param='highSensitivity']) > span", "High / Meteor", "高频 / 流星");
+    setText("[data-param='lowSensitivity'] + small", "20–95 Hz: hidden impact density, local aftershock and white-hot quake edges.", "20–95 Hz：隐形落点、局部余震与白热震缘。");
+    setText("[data-param='midSensitivity'] + small", "95–620 Hz: large centre-born ripples, radius and layered wave response.", "95–620 Hz：中央大涟漪、传播半径与分层回波。");
+    setText("[data-param='highSensitivity'] + small", "1.2–9.5 kHz: meteor rate and speed, white heat and tunnel-line motion.", "1.2–9.5 kHz：流星频率与速度、白热和隧道线场。");
     dom.auditionHelp.textContent = zh
       ? "SoundCloud 是试听源，不是 iframe FFT。如需真实分析，请用 BlackHole 或其他系统音频路由作为 MIC 输入。"
       : "SoundCloud is a listening source, not iframe FFT. For real analysis, route it through BlackHole or another system-audio input and then use MIC.";
@@ -1249,7 +1338,9 @@
     const angle = Math.random() * Math.PI * 2;
     slot.active = true;
     slot.age = 0;
-    slot.life = 0.72 + (1 - strength) * 0.34;
+    slot.life =
+      (0.38 + (1 - strength) * 0.18) *
+      (1.08 - state.highSensitivity * 0.38);
     slot.x = Math.cos(angle) * radius;
     slot.z = Math.sin(angle) * radius;
     slot.strength = clamp(strength, 0.25, 1);
@@ -1373,7 +1464,8 @@
     const lowStats = channelStats(lowMidHistory, rawLowMid || 0.03);
     const subStats = channelStats(subBassHistory, rawSubBass || 0.025);
     const highStats = channelStats(highHistory, rawHigh || 0.018);
-    const lowThresholdFactor = 1.18 - state.lowSensitivity * 0.52;
+    const impactThresholdFactor = 1.22 - state.lowSensitivity * 0.62;
+    const rippleThresholdFactor = 1.22 - state.midSensitivity * 0.62;
     const highThresholdFactor = 1.18 - state.highSensitivity * 0.52;
     const rippleThreshold = Math.max(0.03, lowStats.mean + lowStats.deviation * 0.2);
     const impactThreshold = Math.max(0.028, subStats.mean + subStats.deviation * 0.28);
@@ -1382,15 +1474,15 @@
       highStats.mean + highStats.deviation * 0.24,
     );
     const rippleTransient =
-      rawLowMid > rippleThreshold &&
-      lowFlux > Math.max(0.004, lowStats.deviation * 0.1) * lowThresholdFactor;
+      rawLowMid > Math.max(0.06, rippleThreshold) &&
+      lowFlux > Math.max(0.004, lowStats.deviation * 0.1) * rippleThresholdFactor;
     const subBassTransient =
       rawSubBass > impactThreshold &&
-      subFlux > Math.max(0.0045, subStats.deviation * 0.11) * lowThresholdFactor;
+      subFlux > Math.max(0.0045, subStats.deviation * 0.11) * impactThresholdFactor;
     const fallbackImpact =
       !subBassTransient &&
       rawLowMid > lowStats.mean + lowStats.deviation * 0.38 &&
-      lowFlux > Math.max(0.006, lowStats.deviation * 0.14) * lowThresholdFactor;
+      lowFlux > Math.max(0.006, lowStats.deviation * 0.14) * rippleThresholdFactor;
     const meteorTransient =
       rawHigh > meteorThreshold &&
       highFlux > Math.max(0.0025, highStats.deviation * 0.09) * highThresholdFactor;
@@ -1398,6 +1490,7 @@
     const subBassOnset = subBassTransient && transientArmed.subBass;
     const fallbackImpactOnset = fallbackImpact && transientArmed.lowMid;
     const meteorOnset = meteorTransient && transientArmed.high;
+    if (subBassOnset) lastSubBassAt = nowSeconds;
     if (rippleOnset || fallbackImpactOnset) transientArmed.lowMid = false;
     else if (rawLowMid < 0.04 || rawLowMid < slowEnvelope.lowMid * 0.78) {
       transientArmed.lowMid = true;
@@ -1411,22 +1504,34 @@
       transientArmed.high = true;
     }
     const audible = rawLowMid > 0.018 || rawSubBass > 0.018 || rawHigh > 0.01;
-    const rippleActive = rawLowMid > Math.max(0.035, lowStats.mean * 0.72);
+    const rippleActive = rawLowMid > Math.max(0.06, lowStats.mean * 0.72);
     const impactActive =
-      Math.max(rawSubBass, rawLowMid * 0.72) >
-      Math.max(0.03, Math.min(subStats.mean, lowStats.mean) * 0.72);
+      rawSubBass > Math.max(0.055, subStats.mean * 0.78) ||
+      (
+        nowSeconds - lastSubBassAt > 4.5 &&
+        rawLowMid * 0.72 > Math.max(0.03, lowStats.mean * 0.72)
+      );
     const meteorActive = rawHigh > Math.max(0.06, highStats.mean * 0.7);
 
     if (live && audible && nowSeconds - lastRippleAt > MOTION_TUNING.rippleCooldown) {
       const densityFloorHit =
-        rippleActive && nowSeconds - lastRippleAt > MOTION_TUNING.rippleDensityFloor;
+        rippleActive &&
+        nowSeconds - lastRippleAt >
+          MOTION_TUNING.rippleDensityFloor + (1 - state.midSensitivity) * 0.42;
       if (rippleOnset || densityFloorHit) {
         const source = densityFloorHit && !rippleOnset ? "density-floor" : "audio";
         const strength =
-          clamp(0.2 + state.lowMid * 0.9 + lowFlux * 3.4) *
+          clamp(
+            0.12
+              + state.lowMid * (0.42 + state.midSensitivity * 0.92)
+              + lowFlux * (1.6 + state.midSensitivity * 4.4),
+          ) *
           (source === "density-floor" ? 0.68 : 1);
         spawnRipple(strength, source);
-        if (rippleOnset && motionExcursion > 0.5) {
+        if (
+          rippleOnset &&
+          lowFlux * (2.2 + state.midSensitivity * 6.2) > 0.42
+        ) {
           spawnRipple(strength * 0.72, "echo-layer", 0.13);
           spawnRipple(strength * 0.5, "echo-layer", 0.25);
         }
@@ -1448,17 +1553,30 @@
 
     if (live && audible && nowSeconds - lastImpactAt > MOTION_TUNING.impactCooldown) {
       const densityFloorHit =
-        impactActive && nowSeconds - lastImpactAt > MOTION_TUNING.impactDensityFloor;
-      if (subBassOnset || fallbackImpactOnset || densityFloorHit) {
+        impactActive &&
+        nowSeconds - lastImpactAt >
+          MOTION_TUNING.impactDensityFloor + (1 - state.lowSensitivity) * 0.72;
+      const substituteImpact =
+        fallbackImpactOnset && nowSeconds - lastSubBassAt > 4.5;
+      if (subBassOnset || substituteImpact || densityFloorHit) {
         const source =
-          densityFloorHit && !subBassOnset && !fallbackImpactOnset ? "density-floor" : "audio";
+          densityFloorHit && !subBassOnset && !substituteImpact ? "density-floor" : "audio";
         const mappedSource = subBassOnset ? state.subBass : state.lowMid * 0.82;
         const sourceFlux = subBassOnset ? subFlux : lowFlux;
         const strength =
-          clamp(0.24 + mappedSource + sourceFlux * 3) *
+          clamp(
+            0.12
+              + mappedSource * (0.48 + state.lowSensitivity * 1.08)
+              + sourceFlux * (1.5 + state.lowSensitivity * 3.8),
+          ) *
           (source === "density-floor" ? 0.7 : 1);
         spawnImpact(strength, undefined, undefined, source);
-        if (source === "audio" && motionExcursion > 0.55) {
+        if (
+          source === "audio" &&
+          (subBassOnset
+            ? subFlux * (2.4 + state.lowSensitivity * 6.4) > 0.44
+            : lowFlux * (1.8 + state.lowSensitivity * 3.2) > 0.52)
+        ) {
           spawnImpact(strength * 0.72, undefined, undefined, "echo-layer", 0.11);
           spawnImpact(strength * 0.5, undefined, undefined, "echo-layer", 0.23);
         }
@@ -1508,14 +1626,15 @@
       audible,
     });
 
+    coreUniforms.uSubBass.value = state.subBass;
     coreUniforms.uBass.value = state.bass;
     coreUniforms.uLowMid.value = state.lowMid;
     coreUniforms.uMid.value = state.mid;
     coreUniforms.uHigh.value = state.high;
     coreUniforms.uExcursion.value = motionExcursion;
     atmosphereUniforms.uHigh.value = state.high;
-    dom.bassReadout.textContent = state.bass.toFixed(2);
-    dom.midReadout.textContent = state.mid.toFixed(2);
+    dom.bassReadout.textContent = state.subBass.toFixed(2);
+    dom.midReadout.textContent = state.lowMid.toFixed(2);
     dom.highReadout.textContent = state.high.toFixed(2);
     dom.bpmReadout.textContent =
       state.bpm && state.bpmConfidence > 0.18
@@ -1661,9 +1780,12 @@
         coreUniforms.uEffectAmount.value) *
       Math.min(1, delta * 2.2);
     atmosphereUniforms.uTime.value = time;
+    atmosphereUniforms.uHighSensitivity.value = state.highSensitivity;
     atmosphereUniforms.uIntensity.value = state.intensity;
     atmosphereUniforms.uHue.value = sceneHue;
     atmosphereUniforms.uSceneStyle.value = state.scene;
+    atmosphereUniforms.uTunnelDirection.value = preset.tunnelDirection;
+    atmosphereUniforms.uTunnelSpeed.value = preset.tunnelSpeed;
     postUniforms.uTime.value = time;
 
     coreField.visible = !state.blackout;
@@ -1674,13 +1796,20 @@
       (desiredCoreRotation - coreField.rotation.y) * Math.min(1, delta * 3.6);
     atmosphere.rotation.y = rotation * 0.58;
 
-    const orbit = (pointerX - 0.5) * 0.28 + Math.sin(time * 0.11 + state.scene) * 0.08;
-    const targetX = preset.camera[0] + Math.sin(orbit) * (state.scene === 7 ? 5.5 : 8.5);
-    const targetY = preset.camera[1] + (0.5 - pointerY) * 2.2;
-    const targetZ = preset.camera[2] + Math.cos(orbit) * (state.scene === 3 ? 2.4 : 1.4);
-    camera.position.x += (targetX - camera.position.x) * 0.035;
-    camera.position.y += (targetY - camera.position.y) * 0.035;
-    camera.position.z += (targetZ - camera.position.z) * 0.035;
+    const cameraPhase = time * preset.orbitRate + state.scene * 0.73;
+    const pointerOrbit = (pointerX - 0.5) * 5.5;
+    const targetX =
+      preset.camera[0] + Math.sin(cameraPhase) * preset.orbitRadius + pointerOrbit;
+    const targetY =
+      preset.camera[1] +
+      (0.5 - pointerY) * 2.2 +
+      Math.sin(cameraPhase * 0.73) * preset.cameraBob;
+    const targetZ =
+      preset.camera[2] + Math.cos(cameraPhase) * preset.orbitDepth;
+    const cameraFollow = 1 - Math.exp(-delta * preset.cameraFollow);
+    camera.position.x += (targetX - camera.position.x) * cameraFollow;
+    camera.position.y += (targetY - camera.position.y) * cameraFollow;
+    camera.position.z += (targetZ - camera.position.z) * cameraFollow;
     camera.lookAt(
       preset.lookAt[0],
       preset.lookAt[1] + state.bass * 1.4,
@@ -1920,6 +2049,13 @@
       ripples: ripples.length,
       impacts: impacts.length,
       meteors: meteors.filter((meteor) => meteor.active).length,
+      activeEventStrengths: {
+        ripples: ripples.map((ripple) => ripple.strength),
+        impacts: impacts.map((impact) => impact.strength),
+        meteors: meteors
+          .filter((meteor) => meteor.active)
+          .map((meteor) => ({ strength: meteor.strength, life: meteor.life })),
+      },
       eventCounters: { ...eventCounters },
       motion: {
         ...motionDebug,
@@ -1932,6 +2068,15 @@
       bpmConfidence: state.bpmConfidence,
       scene: state.scene,
       sceneName: scenePreset().name,
+      camera: {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+        orbitRate: scenePreset().orbitRate,
+        follow: scenePreset().cameraFollow,
+        tunnelDirection: scenePreset().tunnelDirection,
+        tunnelSpeed: scenePreset().tunnelSpeed,
+      },
       effectiveHue: coreUniforms.uHue.value,
       effectiveWarp: coreUniforms.uWarp.value,
       sliderValues: Object.fromEntries(

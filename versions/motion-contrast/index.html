@@ -49,8 +49,8 @@
             <span id="modeLabel">RANGE FIELD / IDLE</span>
           </div>
           <div class="compact-meters" aria-label="Audio meters">
-            <span>LOW <b id="bassReadout">0.00</b></span>
-            <span>MID <b id="midReadout">0.00</b></span>
+            <span>SUB <b id="bassReadout">0.00</b></span>
+            <span>LOW-MID <b id="midReadout">0.00</b></span>
             <span>HIGH <b id="highReadout">0.00</b></span>
             <span>BPM <b id="bpmReadout">--</b></span>
           </div>
@@ -206,19 +206,19 @@
             <small>Input gain before FFT and event detection.</small>
           </label>
           <label>
-            <span>Low Sens</span>
+            <span>Sub / Quake</span>
             <input type="range" min="0" max="1" step="0.001" value="0.82" data-param="lowSensitivity" />
-            <small>Low and sub energy: centre force, ripples and hidden impact hits.</small>
+            <small>20–95 Hz: hidden impact density, local aftershock and white-hot quake edges.</small>
           </label>
           <label>
-            <span>Mid Sens</span>
+            <span>Low-mid / Wave</span>
             <input type="range" min="0" max="1" step="0.001" value="0.74" data-param="midSensitivity" />
-            <small>Low-mid body: field breathing and broad surface response.</small>
+            <small>95–620 Hz: large centre-born ripples, radius and layered wave response.</small>
           </label>
           <label>
-            <span>High Sens</span>
+            <span>High / Meteor</span>
             <input type="range" min="0" max="1" step="0.001" value="0.68" data-param="highSensitivity" />
-            <small>High transients: meteor rate, white heat and atmosphere shimmer.</small>
+            <small>1.2–9.5 kHz: meteor rate and speed, white heat and tunnel-line motion.</small>
           </label>
           <label>
             <span>Hue</span>
