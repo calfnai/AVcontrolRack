@@ -18,6 +18,7 @@
   const RIPPLE_SLOTS = 6;
   const IMPACT_SLOTS = 8;
   const HARD_PARTICLE_LIMIT = 65536;
+  const ONBOARDING_KEY = "rangeEchoOnboardingSeenV2";
   const FIELD_SPACING = 0.27;
   const FIELD_HALF = ((GRID_SIZE - 1) * FIELD_SPACING) / 2;
   const FORM_CANVAS_SIZE = 160;
@@ -215,7 +216,16 @@
       "auditionToggle",
       "auditionPlayer",
       "auditionHelp",
+      "guideToggle",
       "languageToggle",
+      "onboarding",
+      "onboardingStart",
+      "onboardingBlackhole",
+      "onboardingSample",
+      "onboardingSkip",
+      "blackholeGuide",
+      "blackholeDownload",
+      "onboardingHint",
       "echoToggle",
       "blackoutToggle",
       "freezeToggle",
@@ -949,6 +959,70 @@
     dom.panelToggle.setAttribute("aria-expanded", String(open));
   }
 
+  function setOnboardingOpen(open) {
+    if (!dom.onboarding) return;
+    dom.onboarding.hidden = !open;
+    dom.onboarding.classList.toggle("open", open);
+    if (open) {
+      openPanel(false);
+      dom.onboarding.classList.remove("mic-error");
+      dom.onboardingStart?.focus({ preventScroll: true });
+    }
+  }
+
+  function showOnboarding(force = false) {
+    if (!dom.onboarding) return;
+    if (!force && localStorage.getItem(ONBOARDING_KEY) === "1") return;
+    setOnboardingOpen(true);
+  }
+
+  function finishOnboarding() {
+    localStorage.setItem(ONBOARDING_KEY, "1");
+    setOnboardingOpen(false);
+  }
+
+  function setDefaultOnboardingHint() {
+    if (!dom.onboardingHint) return;
+    dom.onboardingHint.textContent =
+      state.language === "zh"
+        ? "如果麦克风被浏览器拦截，请用 HTTPS 页面或 localhost 打开。"
+        : "If the browser blocks the mic, open this page through HTTPS or localhost.";
+  }
+
+  function updateBlackholeRoute(open) {
+    if (!dom.onboarding) return;
+    dom.onboarding.classList.toggle("route-open", open);
+    dom.blackholeGuide?.setAttribute("aria-hidden", String(!open));
+    if (dom.onboardingBlackhole) {
+      dom.onboardingBlackhole.textContent =
+        state.language === "zh"
+          ? open
+            ? "收起内录"
+            : "BLACKHOLE 内录"
+          : open
+            ? "HIDE ROUTE"
+            : "BLACKHOLE ROUTE";
+    }
+  }
+
+  async function startOnboardingMic() {
+    setStatus(dom.audioStatus, "MIC REQUEST", true);
+    try {
+      await startMicrophone();
+      finishOnboarding();
+    } catch (error) {
+      const label = describeAudioError(error);
+      handleAudioError(error);
+      dom.onboarding?.classList.add("mic-error");
+      if (dom.onboardingHint) {
+        dom.onboardingHint.textContent =
+          state.language === "zh"
+            ? `${label}。请允许麦克风，或改用 HTTPS / localhost / BlackHole 输入。`
+            : `${label}. Allow microphone access, or use HTTPS / localhost / BlackHole input.`;
+      }
+    }
+  }
+
   function setParam(name, value, shouldSend = true) {
     state[name] = clamp(Number(value));
     const slider = sliders.find((item) => item.dataset.param === name);
@@ -1005,6 +1079,7 @@
       dom.languageToggle.title = zh ? "Switch to English" : "切换到中文";
     }
     setText(".menu-design-link", "DESIGN NOTE", "设计说明");
+    setText("#guideToggle", "GUIDE", "教程");
     dom.panelToggle.querySelector("span").textContent = "CONTROL";
     setText("#audioToggle", "MIC", "麦克风");
     setText("label[for='audioInput']", "AUDIO", "音频");
@@ -1017,6 +1092,29 @@
     setText("#textParticle", "TEXT", "文字");
     setText("label[for='imageInput']", "IMAGE / SVG", "图片 / SVG");
     setText("#clearParticle", "CLEAR", "清除");
+    setText("#onboardingKicker", "FIRST PLAY", "首次进入");
+    const onboardingTitle = document.querySelector("#onboardingTitle");
+    if (onboardingTitle) onboardingTitle.innerHTML = zh ? "听见<br />房间" : "HEAR<br />THE ROOM";
+    setText(
+      "#onboardingCopy",
+      "Open the microphone, then clap, speak, or play sound near the laptop.",
+      "打开麦克风，然后拍手、说话，或让电脑旁边响起来。",
+    );
+    setText("#onboardingStepMic", "MIC", "麦克风");
+    setText("#onboardingStepMicText", "Allow browser access", "允许浏览器访问");
+    setText("#onboardingStepRoom", "ROOM", "现场");
+    setText("#onboardingStepRoomText", "Make a sound", "发出声音");
+    setText("#onboardingStepLoop", "LOOP", "内录");
+    setText("#onboardingStepLoopText", "Use BlackHole for computer audio", "用 BlackHole 听电脑声音");
+    setText("#onboardingStart", "START LIVE MIC", "打开实时麦克风");
+    setText("#onboardingSample", "SAMPLE", "样本");
+    setText("#onboardingSkip", "SKIP", "跳过");
+    setText("#blackholeDownload", "GET BLACKHOLE ↗", "下载 BLACKHOLE ↗");
+    setText("#blackholeRouteInstall", "Install 2ch", "安装 2ch");
+    setText("#blackholeRouteOutput", "Mac output → BlackHole", "Mac 输出 → BlackHole");
+    setText("#blackholeRouteMic", "Range Echo MIC → BlackHole 2ch", "Range Echo MIC → BlackHole 2ch");
+    updateBlackholeRoute(dom.onboarding?.classList.contains("route-open"));
+    if (!dom.onboarding?.classList.contains("mic-error")) setDefaultOnboardingHint();
     setText(".rack-head .eyebrow", "LIVE PARAMETERS", "现场参数");
     setText(".rack h2", "CONTROL", "CONTROL");
     setText(".control-section:nth-of-type(1) .section-label", "INPUT", "输入");
@@ -1129,6 +1227,7 @@
     await connectAudioNode(context.createMediaStreamSource(microphoneStream), false);
     setStatus(dom.audioStatus, "MIC LIVE", true);
     dom.audioToggle.classList.add("active");
+    localStorage.setItem(ONBOARDING_KEY, "1");
   }
 
   async function startAudioFile(file) {
@@ -2002,6 +2101,16 @@
   dom.panelToggle.addEventListener("click", () => openPanel(true));
   dom.panelClose.addEventListener("click", () => openPanel(false));
   dom.scrim.addEventListener("click", () => openPanel(false));
+  dom.guideToggle?.addEventListener("click", () => showOnboarding(true));
+  dom.onboardingStart?.addEventListener("click", startOnboardingMic);
+  dom.onboardingBlackhole?.addEventListener("click", () =>
+    updateBlackholeRoute(!dom.onboarding?.classList.contains("route-open")),
+  );
+  dom.onboardingSample?.addEventListener("click", () => {
+    startSampleDemo();
+    finishOnboarding();
+  });
+  dom.onboardingSkip?.addEventListener("click", finishOnboarding);
   dom.audioToggle.addEventListener("click", () => {
     startMicrophone().catch(handleAudioError);
   });
@@ -2049,7 +2158,12 @@
     pointerY = event.clientY / Math.max(1, window.innerHeight);
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") openPanel(false);
+    if (event.key !== "Escape") return;
+    if (dom.onboarding && !dom.onboarding.hidden) {
+      finishOnboarding();
+      return;
+    }
+    openPanel(false);
   });
   document.addEventListener("visibilitychange", () => {
     lastFrameAt = performance.now();
@@ -2153,5 +2267,6 @@
   connectMidi();
   resize();
   calibrationStartedAt = performance.now();
+  window.setTimeout(() => showOnboarding(false), 700);
   requestAnimationFrame(draw);
 })();

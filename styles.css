@@ -146,7 +146,8 @@ h1 {
 }
 
 .language-toggle,
-.menu-design-link {
+.menu-design-link,
+.menu-guide-toggle {
   padding: 15px 2px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.32);
   background: transparent;
@@ -164,10 +165,18 @@ h1 {
   border-left: 0;
 }
 
+.menu-guide-toggle {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+}
+
 .language-toggle:hover,
 .language-toggle:focus-visible,
 .menu-design-link:hover,
-.menu-design-link:focus-visible {
+.menu-design-link:focus-visible,
+.menu-guide-toggle:hover,
+.menu-guide-toggle:focus-visible {
   border-color: var(--pink);
   color: var(--text);
   outline: none;
@@ -286,6 +295,271 @@ h1 {
 .startup-notice.done {
   opacity: 0;
   pointer-events: none;
+}
+
+.onboarding {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 54px);
+  background:
+    radial-gradient(circle at 50% 58%, rgba(255, 75, 187, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(3, 1, 6, 0.68), rgba(3, 1, 6, 0.92));
+  backdrop-filter: blur(14px);
+}
+
+.onboarding[hidden] {
+  display: none;
+}
+
+.onboarding-panel {
+  width: min(860px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.055), transparent 36%),
+    rgba(5, 2, 8, 0.86);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.52);
+}
+
+.onboarding-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.86fr) minmax(220px, 1fr);
+  gap: 22px;
+  align-items: end;
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.onboarding-hero h2 {
+  grid-row: 2;
+  margin: 6px 0 0;
+  color: rgba(255, 248, 254, 0.66);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(62px, 12vw, 132px);
+  font-weight: 900;
+  line-height: 0.72;
+  mix-blend-mode: screen;
+  opacity: 0.86;
+  text-transform: uppercase;
+  transform: scale(1.04, 0.88);
+  transform-origin: top left;
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.onboarding-copy {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: 420px;
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.55;
+  text-transform: uppercase;
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--line);
+}
+
+.onboarding-steps figure {
+  display: grid;
+  gap: 16px;
+  min-height: 154px;
+  margin: 0;
+  padding: 22px 18px 18px;
+  background: rgba(5, 2, 8, 0.82);
+}
+
+.onboarding-icon {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 72px;
+  overflow: hidden;
+}
+
+.onboarding-icon-mic::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 34px;
+  height: 48px;
+  border: 2px solid var(--pink);
+  border-radius: 22px;
+  box-shadow:
+    0 0 24px rgba(255, 75, 187, 0.62),
+    inset 0 0 18px rgba(255, 75, 187, 0.18);
+  transform: translateX(-50%);
+}
+
+.onboarding-icon-mic::after {
+  content: "";
+  position: absolute;
+  right: 28%;
+  bottom: 9px;
+  left: 28%;
+  height: 18px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.78);
+  border-left: 2px solid rgba(255, 255, 255, 0.78);
+  border-right: 2px solid rgba(255, 255, 255, 0.78);
+}
+
+.onboarding-icon-wave {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 75, 187, 0.95) 0 3px, transparent 4px),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 12px, rgba(255, 75, 187, 0.48) 13px 14px, transparent 15px 24px);
+  filter: drop-shadow(0 0 16px rgba(255, 75, 187, 0.45));
+}
+
+.onboarding-icon-loop::before,
+.onboarding-icon-loop::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  width: 52px;
+  height: 38px;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(255, 75, 187, 0.3);
+}
+
+.onboarding-icon-loop::before {
+  left: calc(50% - 56px);
+  border-right-color: var(--pink);
+}
+
+.onboarding-icon-loop::after {
+  right: calc(50% - 56px);
+  border-left-color: var(--pink);
+}
+
+.onboarding-steps figcaption {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-steps b {
+  color: var(--pink);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.onboarding-steps span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.blackhole-guide {
+  display: none;
+  grid-template-columns: 170px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px clamp(24px, 4vw, 42px);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 75, 187, 0.07);
+}
+
+.onboarding.route-open .blackhole-guide {
+  display: grid;
+}
+
+.blackhole-guide a {
+  color: var(--white-hot);
+  font-size: 10px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.blackhole-route {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.blackhole-route span {
+  min-height: 38px;
+  padding: 10px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.onboarding-hint {
+  margin: 0;
+  padding: 13px clamp(24px, 4vw, 42px) 0;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.onboarding.mic-error .onboarding-hint {
+  color: var(--pink);
+}
+
+.onboarding-actions {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 0.7fr auto;
+  gap: 8px;
+  padding: 18px clamp(24px, 4vw, 42px) clamp(24px, 4vw, 42px);
+}
+
+.onboarding-primary,
+.onboarding-secondary,
+.onboarding-skip,
+.menu-guide-toggle {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.onboarding-primary,
+.onboarding-secondary,
+.onboarding-skip {
+  min-height: 46px;
+  padding: 0 14px;
+  font-size: 10px;
+}
+
+.onboarding-primary {
+  border-color: var(--pink);
+  background: rgba(255, 75, 187, 0.16);
+  color: var(--white-hot);
+  box-shadow:
+    inset 0 -2px 0 var(--pink),
+    0 0 30px rgba(255, 75, 187, 0.22);
+}
+
+.onboarding-primary:hover,
+.onboarding-primary:focus-visible,
+.onboarding-secondary:hover,
+.onboarding-secondary:focus-visible,
+.onboarding-skip:hover,
+.onboarding-skip:focus-visible {
+  border-color: var(--pink);
+  color: var(--white-hot);
+  outline: none;
 }
 
 .calibration-mark {
@@ -760,6 +1034,108 @@ input[type="range"]::-moz-range-thumb {
   .rack {
     width: 100vw;
     padding: 18px;
+  }
+
+  .onboarding {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .onboarding-hero {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 22px;
+  }
+
+  .onboarding-hero h2,
+  .onboarding-copy {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .onboarding-hero h2 {
+    font-size: clamp(54px, 18vw, 82px);
+  }
+
+  .onboarding-copy {
+    margin: 0;
+    font-size: 10px;
+  }
+
+  .onboarding-steps,
+  .blackhole-route,
+  .onboarding-actions,
+  .blackhole-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-steps figure {
+    grid-template-columns: 86px 1fr;
+    min-height: 96px;
+    align-items: center;
+    padding: 14px 16px;
+  }
+
+  .onboarding-icon {
+    height: 58px;
+  }
+
+  .blackhole-guide,
+  .onboarding-hint,
+  .onboarding-actions {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .onboarding {
+    padding: 10px;
+  }
+
+  .onboarding-panel {
+    width: min(790px, 100%);
+  }
+
+  .onboarding-hero {
+    grid-template-columns: minmax(190px, 0.7fr) minmax(240px, 1fr);
+    padding: 16px 28px;
+  }
+
+  .onboarding-hero h2 {
+    font-size: clamp(50px, 8.2vw, 86px);
+  }
+
+  .onboarding-steps figure {
+    min-height: 90px;
+    padding: 12px 14px 10px;
+  }
+
+  .onboarding-icon {
+    height: 38px;
+  }
+
+  .blackhole-guide {
+    padding: 9px 28px;
+  }
+
+  .blackhole-route span {
+    min-height: 30px;
+    padding: 7px 6px;
+  }
+
+  .onboarding-hint {
+    padding: 8px 28px 0;
+  }
+
+  .onboarding-actions {
+    padding: 10px 28px 14px;
+  }
+
+  .onboarding-primary,
+  .onboarding-secondary,
+  .onboarding-skip {
+    min-height: 38px;
   }
 }
 

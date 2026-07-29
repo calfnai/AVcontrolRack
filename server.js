@@ -1,5 +1,5 @@
 import dgram from "node:dgram";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,9 +66,12 @@ const server = createServer(async (req, res) => {
 
     const rawPath = req.url === "/" ? "/index.html" : req.url.split("?")[0];
     const safePath = normalize(rawPath).replace(/^(\.\.[/\\])+/, "");
-    const filePath = join(root, safePath);
+    let filePath = join(root, safePath);
+    if (existsSync(filePath) && statSync(filePath).isDirectory()) {
+      filePath = join(filePath, "index.html");
+    }
 
-    if (!existsSync(filePath) || !filePath.startsWith(root)) {
+    if (!existsSync(filePath) || !filePath.startsWith(root) || statSync(filePath).isDirectory()) {
       res.writeHead(404);
       res.end("Not found");
       return;
