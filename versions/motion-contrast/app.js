@@ -30,6 +30,11 @@
     meteorCooldown: 0.32,
     meteorDensityFloor: 1.1,
   });
+  const AUDIO_TUNING = Object.freeze({
+    noiseFloorCeiling: 0.04,
+    noiseGateMinimum: 0.05,
+    noiseGateMultiplier: 1.8,
+  });
 
   const QUALITY_PROFILES = {
     stable: { label: "STABLE", atmosphere: 3000, pixelRatio: 1, glow: false },
@@ -387,17 +392,16 @@
       float bandEnergy = readBand(aBand);
       float radialFade = 1.0 - smoothstep(18.2, 23.0, distanceFromCenter);
       float densityGate = 1.0 - smoothstep(0.2 + uDensity * 0.74, 1.0, aSeed);
-      float idle = 0.018
-        + uActivity * (
-          0.045
-          + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.05
-          + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.03
-        );
+      float idle = uActivity * (
+        0.018
+        + sin(distanceFromCenter * 0.54 - uTime * 0.72 + aSeed * 4.0) * 0.04
+        + sin(field.x * 0.21 + field.z * 0.17 + uTime * 0.31) * 0.022
+      );
       float audioLift = pow(max(0.0, bandEnergy), 1.18)
-        * (0.35 + uIntensity * 1.35)
+        * (0.16 + uIntensity * 0.72)
         * (1.0 + uExcursion * 0.12);
       float centerForce = exp(-distanceFromCenter * 0.17)
-        * (uBass * 3.8 + uLowMid * 0.8 + uExcursion * 1.0);
+        * (uBass * 2.2 + uLowMid * 0.55 + uExcursion * 0.62);
       float sceneBand = floor(uSceneStyle + 0.5);
       if (sceneBand > 0.5 && sceneBand < 1.5) {
         field.x += sin(field.z * 0.42 + uTime * 0.78) * (0.18 + uMid * 0.72);
@@ -444,8 +448,10 @@
           * max(0.0, sin((radius - distanceFromCenter) * 2.25))
           * exp(-(radius - distanceFromCenter) * 0.19);
         float fade = pow(max(0.0, 1.0 - p), 0.55) * pulse.w;
-        rippleLift += (shell * 6.2 + wake * 0.68) * fade;
-        rippleFlash += shell * fade * 1.18;
+        float ringTrain = exp(-abs(distanceFromCenter - radius) * 0.34)
+          * max(0.0, sin((distanceFromCenter - radius) * 3.8 + 0.28));
+        rippleLift += (shell * 9.4 + wake * 0.52 + ringTrain * 1.28) * fade;
+        rippleFlash += (shell * 1.9 + ringTrain * 0.4) * fade;
       }
 
       for (int i = 0; i < 8; i++) {
@@ -460,9 +466,9 @@
           * exp(-d * 0.13)
           * exp(-p * 2.2)
           * impact.w;
-        impactLift += (shell * 7.5 - core * 2.5) * fade;
+        impactLift += (shell * 4.8 - core * 1.8) * fade;
         impactFlash += (shell * 1.72 + core) * fade;
-        impactQuake += aftershock * (0.18 + uSubBass * 0.72);
+        impactQuake += aftershock * (0.05 + uSubBass * 0.3);
       }
 
       float totalLift = idle + audioLift + centerForce + rippleLift + impactLift + impactQuake;
@@ -685,11 +691,12 @@
           - uTime * (0.72 + uHigh * 1.8)
           + lane * 6.28318
         );
+        float waveAmount = uActivity * (0.035 + uHighSensitivity * 0.2 + uHigh * 1.18);
         transformed.z = depth;
         transformed.x = position.x * 0.9
-          + wave * (0.24 + uHighSensitivity * 0.54 + uHigh * 1.25);
+          + wave * waveAmount;
         transformed.y = 7.0 + abs(position.y) * 0.62
-          + sin(depth * 0.21 + lane * 12.566) * (0.28 + uHigh * 0.52);
+          + sin(depth * 0.21 + lane * 12.566) * uActivity * (0.035 + uHigh * 0.62);
         vAlpha = (0.025 + uActivity * (0.035 + uHighSensitivity * 0.09 + uHigh * 0.24))
           * (0.35 + aSeed * 0.65);
       }
@@ -893,6 +900,9 @@
   let time = 0;
   let visualTime = 0;
   let audioActivity = 0;
+  let inputNoiseFloor = 0.018;
+  let inputPeak = 0;
+  let inputGate = AUDIO_TUNING.noiseGateMinimum;
   let lastFrameAt = performance.now();
   let lastAudioAt = 0;
   let lastRippleAt = -10;
@@ -1402,6 +1412,30 @@
     return current + (target - current) * (1 - Math.exp(-delta / timeConstant));
   }
 
+  function applyInputNoiseGate(values, delta) {
+    inputPeak = values.reduce((peak, value) => Math.max(peak, value), 0);
+    if (inputPeak < 0.12) {
+      inputNoiseFloor = Math.min(
+        AUDIO_TUNING.noiseFloorCeiling,
+        followEnvelope(inputNoiseFloor, inputPeak, delta, 0.9, 0.45),
+      );
+    } else {
+      inputNoiseFloor = Math.max(0.018, inputNoiseFloor - delta * 0.012);
+    }
+    inputGate = Math.max(
+      AUDIO_TUNING.noiseGateMinimum,
+      inputNoiseFloor * AUDIO_TUNING.noiseGateMultiplier,
+    );
+    if (inputPeak <= inputGate) {
+      values.fill(0);
+      return false;
+    }
+    values.forEach((value, index) => {
+      values[index] = clamp((value - inputGate) / Math.max(0.001, 1 - inputGate) * 1.12);
+    });
+    return true;
+  }
+
   function updateMacroEnvelopes(values, delta) {
     Object.entries(values).forEach(([key, value]) => {
       fastEnvelope[key] = followEnvelope(fastEnvelope[key], value, delta, 0.035, 0.14);
@@ -1493,8 +1527,11 @@
       ranges.forEach(([from, to], index) => {
         rawBandValues[index] = bandEnergy(from, to);
       });
+      applyInputNoiseGate(rawBandValues, audioDelta);
     } else {
       rawBandValues.fill(0);
+      inputPeak = 0;
+      inputGate = AUDIO_TUNING.noiseGateMinimum;
     }
 
     rawBandValues.forEach((value, index) => {
@@ -1512,8 +1549,11 @@
     const bass = bandUniforms[1] * 0.35 + bandUniforms[2] * 0.65;
     const lowMid = bandUniforms[3] * 0.66 + bandUniforms[4] * 0.34;
     const mid = bandUniforms[4] * 0.42 + bandUniforms[5] * 0.38 + bandUniforms[6] * 0.2;
+    const extendedHighInput = analyserLive ? bandEnergy(3500, 9500) : 0;
     const rawExtendedHigh = analyserLive
-      ? bandEnergy(3500, 9500)
+      ? extendedHighInput <= inputGate
+        ? 0
+        : clamp((extendedHighInput - inputGate) / Math.max(0.001, 1 - inputGate) * 1.12)
       : Math.max(rawBandValues[7], rawBandValues[6] * 0.72);
     const liveHigh = live
       ? applyBandResponse(rawExtendedHigh, 7)
@@ -1608,7 +1648,7 @@
     const activityTarget = state.syntheticStress
       ? 1
       : live
-        ? clamp((activitySignal - 0.035) / 0.14)
+        ? clamp((activitySignal - 0.06) / 0.16)
         : 0;
     audioActivity = followEnvelope(
       audioActivity,
@@ -1617,8 +1657,10 @@
       0.04,
       0.62,
     );
-    const audible = activityTarget > 0.04;
-    const rippleActive = rawLowMid > Math.max(0.06, lowStats.mean * 0.72);
+    const audible = activityTarget > 0.08;
+    const rippleActive =
+      rawLowMid > Math.max(0.07, lowStats.mean * 0.72) ||
+      rawSubBass > Math.max(0.075, subStats.mean * 0.78);
     const impactActive =
       rawSubBass > Math.max(0.055, subStats.mean * 0.78) ||
       (
@@ -1632,24 +1674,27 @@
         rippleActive &&
         nowSeconds - lastRippleAt >
           MOTION_TUNING.rippleDensityFloor + (1 - state.midSensitivity) * 0.42;
-      if (rippleOnset || densityFloorHit) {
-        const source = densityFloorHit && !rippleOnset ? "density-floor" : "audio";
+      const bassRippleOnset = subBassOnset && !rippleOnset;
+      if (rippleOnset || bassRippleOnset || densityFloorHit) {
+        const source = densityFloorHit && !rippleOnset && !bassRippleOnset ? "density-floor" : "audio";
+        const waveLevel = rippleOnset ? state.lowMid : state.subBass;
+        const waveFlux = rippleOnset ? lowFlux : subFlux;
         const strength =
           clamp(
             0.12
-              + state.lowMid * (0.42 + state.midSensitivity * 0.92)
-              + lowFlux * (1.6 + state.midSensitivity * 4.4),
+              + waveLevel * (0.58 + state.midSensitivity * 1.12)
+              + waveFlux * (1.9 + state.midSensitivity * 4.8),
           ) *
           (source === "density-floor" ? 0.68 : 1);
         spawnRipple(strength, source);
         if (
-          rippleOnset &&
-          lowFlux * (2.2 + state.midSensitivity * 6.2) > 0.42
+          (rippleOnset || bassRippleOnset) &&
+          waveFlux * (2.2 + state.midSensitivity * 6.2) > 0.32
         ) {
           spawnRipple(strength * 0.72, "echo-layer", 0.13);
           spawnRipple(strength * 0.5, "echo-layer", 0.25);
         }
-        if (rippleOnset) {
+        if (rippleOnset || bassRippleOnset) {
           registerTempoOnset(
             nowSeconds,
             clamp(0.2 + rawLowMid * 0.72 + rawSubBass * 0.42 + lowFlux * 3.8),
@@ -1733,6 +1778,9 @@
       activitySignal,
       activityTarget,
       audioActivity,
+      inputPeak,
+      inputNoiseFloor,
+      inputGate,
     });
 
     coreUniforms.uSubBass.value = state.subBass;
